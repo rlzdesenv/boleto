@@ -1,6 +1,6 @@
 {
-  "name": "reis/boleto",
-  "description": "Boleto Bancario, em desenvolvimento ... ",
+  "name": "rlzdesenv/boleto",
+  "description": "Boleto Bancário, em desenvolvimento ... ",
   "type": "library",
   "require": {
     "php": ">=7.0",
@@ -14,8 +14,8 @@
   },
   "authors": [
     {
-      "name": "Elvis P. dos Reis",
-      "email": "elvisdosreis@gmail.com"
+      "name": "RLZ Informática LTDA",
+      "email": "desenvolvimento@rlz.com.br"
     }
   ],
   "minimum-stability": "dev",
