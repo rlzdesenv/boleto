@@ -1,6 +1,7 @@
 {
   "name": "rlzdesenv/boleto",
   "description": "Boleto Bancário, em desenvolvimento ... ",
+  "license": "BSD-3-Clause",
   "type": "library",
   "require": {
     "php": ">=7.0",
@@ -18,7 +19,7 @@
       "email": "desenvolvimento@rlz.com.br"
     }
   ],
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "prefer-stable": true,
   "autoload": {
     "psr-4": {
