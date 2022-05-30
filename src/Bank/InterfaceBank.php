@@ -16,5 +16,6 @@ interface InterfaceBank
     public function getValor();
     public function getNossoNumero();
     public function getLinhaDigitavel();
-    public function getCodigoBarras();
+    public function getCodigoBarras();    
+    public function getPixQrCode();
 }
