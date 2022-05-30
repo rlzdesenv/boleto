@@ -16,6 +16,16 @@ try {
     $multa = new Multa(2, $vencimento->modify('+1 day'));
 
     $bb = new \Boleto\Bank\BrasilService();
+    
+    /*
+     Para usar uso da Api deve usar cliente API para REST ou WEBSERVICE para uso via SOAP, para api necessário informar o gw-dev-app-key.
+    
+     $gw-dev-app-key = null;     
+     $boleto->setClient('API');
+     $boleto->setAppKey($gw-dev-app-key);
+    
+    */
+    
     $bb->setEmissao($vencimento)
         ->setVencimento($vencimento)
         ->setValor(100)
