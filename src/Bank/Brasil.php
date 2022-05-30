@@ -192,4 +192,12 @@ class Brasil extends AbstractBank implements InterfaceBank
     {
         return $this->formata_numero(number_format($this->valor, 2, ',', ''),10,0,"valor");
     }
+    
+    /**
+     * @return string|null
+     */
+    public function getPixQrCode(): ?string
+    {
+        return null;
+    }
 }
