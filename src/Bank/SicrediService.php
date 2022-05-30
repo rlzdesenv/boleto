@@ -425,4 +425,12 @@ class SicrediService implements InterfaceBank
             throw new \Exception($e->getMessage(), $e->getCode());
         }
     }
+    
+    /**
+     * @return string|null
+     */
+    public function getPixQrCode(): ?string
+    {
+        return null;
+    }
 }
