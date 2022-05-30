@@ -240,5 +240,13 @@ class Bradesco extends AbstractBank implements InterfaceBank
 
         return "$campo1 $campo2 $campo3 $campo4 $campo5";
     }
+    
+    /**
+     * @return string|null
+     */
+    public function getPixQrCode(): ?string
+    {
+        return null;
+    }
 
 }
