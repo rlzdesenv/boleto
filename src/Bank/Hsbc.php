@@ -268,4 +268,12 @@ class Hsbc extends AbstractBank implements InterfaceBank
 
         return $digito;
     }
+    
+    /**
+     * @return string|null
+     */
+    public function getPixQrCode(): ?string
+    {
+        return null;
+    }
 }
