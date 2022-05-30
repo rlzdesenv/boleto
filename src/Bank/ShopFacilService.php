@@ -552,4 +552,12 @@ class ShopFacilService implements InterfaceBank
         }
 
     }
+    
+    /**
+     * @return string|null
+     */
+    public function getPixQrCode(): ?string
+    {
+        return null;
+    }
 }
