@@ -416,6 +416,11 @@ class SicrediService implements InterfaceBank
 
             if($e->hasResponse()) {
                 $error = json_decode($e->getResponse()->getBody()->getContents());
+                if((string)$error->codigo === '20001') {
+                    $re = '/20001: \K\w+/m';
+                    preg_match_all($re, $error->mensagem, $matches, PREG_SET_ORDER, 0);
+                    $error->codigo = $matches[0][0];
+                }                
                 $exception = new InvalidArgumentException($error->codigo, $error->mensagem);
                 throw new \Exception($error->mensagem, 406, $exception);
             } else {
