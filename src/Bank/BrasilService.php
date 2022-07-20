@@ -631,7 +631,7 @@ class BrasilService implements InterfaceBank
             $boleto->quantidadeDiasProtesto = 0;
             $boleto->quantidadeDiasNegativacao = 0;
             $boleto->orgaoNegativador = 0;
-            $boleto->indicadorAceiteTituloVencido = 'N';
+            $boleto->indicadorAceiteTituloVencido = $this->getPrazoDevolucao() > 0 ? 'S' : 'N';
             $boleto->numeroDiasLimiteRecebimento = $this->getPrazoDevolucao();
             $boleto->codigoAceite = 'N';
             $boleto->codigoTipoTitulo = 0;
