@@ -468,8 +468,7 @@ class BrasilService implements InterfaceBank
 
 
     public function send()
-    {
-        try{
+    {        
             if ($this->getClient() === 'API') {
                 $this->sendApi();
             } else {
@@ -609,10 +608,6 @@ class BrasilService implements InterfaceBank
                     throw new Exception($e->getMessage(), 500, $e);
                 }
             }
-        } catch (Exception $e) {
-            throw new Exception($e->getMessage(), 500, $e);
-        }  
-
     }
 
 
