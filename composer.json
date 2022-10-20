@@ -9,7 +9,7 @@
     "ext-soap": "*",
     "ext-simplexml": "*",
     "psr/log": "^1.0",
-    "guzzlehttp/guzzle": "^6.3",
+    "guzzlehttp/guzzle": "^6.3 || ^7.0",
     "cache/apcu-adapter": "^1.0"
   },
   "authors": [
