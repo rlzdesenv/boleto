@@ -13,12 +13,8 @@ use Boleto\Helper\Helper;
 use Boleto\Entity\Juros;
 use Boleto\Entity\Multa;
 use Boleto\Entity\Pagador;
-use Boleto\Exception\InvalidArgumentException;
 use Cache\Adapter\Apcu\ApcuCachePool;
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ClientException;
-use function GuzzleHttp\Psr7\str;
-use Meng\AsyncSoap\Guzzle\Factory;
 
 class BrasilEcommerce implements InterfaceBank
 {
