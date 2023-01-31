@@ -71,7 +71,7 @@ class Pagador
      */
     public function setNome($nome)
     {
-        $this->nome = $nome;
+        $this->nome = mb_substr('"', '', $nome);
         return $this;
     }
 
@@ -125,7 +125,7 @@ class Pagador
      */
     public function setLogradouro($logradouro)
     {
-        $this->logradouro = $logradouro;
+        $this->logradouro = mb_substr('"', '', $logradouro);
         return $this;
     }
 
@@ -161,7 +161,7 @@ class Pagador
      */
     public function setComplemento($complemento)
     {
-        $this->complemento = $complemento;
+        $this->complemento = mb_substr('"', '', $complemento);
         return $this;
     }
 
@@ -179,7 +179,7 @@ class Pagador
      */
     public function setBairro($bairro)
     {
-        $this->bairro = $bairro;
+        $this->bairro = mb_substr('"', '', $bairro);
         return $this;
     }
 
@@ -197,7 +197,7 @@ class Pagador
      */
     public function setCidade($cidade)
     {
-        $this->cidade = $cidade;
+        $this->cidade = mb_substr('"', '', $cidade);
         return $this;
     }
 
