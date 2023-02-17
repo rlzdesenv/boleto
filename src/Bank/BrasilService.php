@@ -43,6 +43,7 @@ class BrasilService implements InterfaceBank
     private $linhadigitavel;
     private $pixqrcode;
     private $prazodevolucao;
+    private $pix = true;
 
     /**
      * @var Pagador
@@ -466,148 +467,166 @@ class BrasilService implements InterfaceBank
         return $this;
     }
 
+    /**
+     * @return boolean
+     */
+    public function getGerarPix()
+    {
+        return this->píx;
+    }
+
+    /**
+     * @param boolean $prix
+     * @return CaixaService
+     */
+    public function setGerarPix(bool $pix)
+    {
+        $this->pix = $pix;
+        return $this;
+    }
+
 
     public function send()
-    {        
-            if ($this->getClient() === 'API') {
-                $this->sendApi();
-            } else {
-                try {
-                    $token = $this->getToken();
+    {
+        if ($this->getClient() === 'API') {
+            $this->sendApi();
+        } else {
+            try {
+                $token = $this->getToken();
 
-                    $httpHeaders = [
-                        'http' => [
-                            'protocol_version' => 1.1,
-                            'header' => "Authorization: Bearer " . $token . "\r\n" . "Cache-Control: no-cache"
-                        ],
-                        'ssl' => [
-                            'verify_peer' => false,
-                            'verify_peer_name' => false,
-                            'allow_self_signed' => true
-                        ]
-                    ];
+                $httpHeaders = [
+                    'http' => [
+                        'protocol_version' => 1.1,
+                        'header' => "Authorization: Bearer " . $token . "\r\n" . "Cache-Control: no-cache"
+                    ],
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true
+                    ]
+                ];
 
-                    $context = stream_context_create($httpHeaders);
+                $context = stream_context_create($httpHeaders);
 
-                    if ($this->isSandbox()) {
-                        /* Problema de SSL no Endpoint
-                        $endpoint = 'https://cobranca.homologa.bb.com.br:7101/Processos/Ws/RegistroCobrancaService.serviceagent?wsdl';
-                        */
-                        $endpoint = dirname(__FILE__) . '/../XSD/Banco do Brasil/RegistroCobrancaServiceHomologacao.xml';
-                    } else {
-                        /* Problema de SSL no Endpoint
-                        $endpoint = 'https://cobranca.bb.com.br:7101/Processos/Ws/RegistroCobrancaService.serviceagent?wsdl';
-                        */
-                        $endpoint = dirname(__FILE__) . '/../XSD/Banco do Brasil/RegistroCobrancaService.xml';
-                    }
-
-                    $client = new SoapClient($endpoint,
-                        [
-                            'trace' => TRUE,
-                            'exceptions' => TRUE,
-                            'encoding' => 'UTF-8',
-                            'compression' => \SOAP_COMPRESSION_ACCEPT | \SOAP_COMPRESSION_GZIP,
-                            'cache_wsdl' => WSDL_CACHE_NONE,
-                            'connection_timeout' => 30,
-                            'stream_context' => $context
-                        ]
-                    );
-
-                    $titulo = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><Message/>');
-
-                    $titulo->addChild('numeroConvenio', $this->getConvenio());
-                    $titulo->addChild('numeroCarteira', $this->getCarteira());
-                    $titulo->addChild('numeroVariacaoCarteira', $this->getVariacaCarteira());
-
-                    $titulo->addChild('codigoModalidadeTitulo', 1);
-                    $titulo->addChild('dataEmissaoTitulo', $this->getEmissao()->format('d.m.Y'));
-                    $titulo->addChild('dataVencimentoTitulo', $this->getVencimento()->format('d.m.Y'));
-                    $titulo->addChild('valorOriginalTitulo', $this->getValor());
-
-
-                    if (count($this->desconto) > 0) {
-                        if (count($this->desconto) > 1) {
-                            throw new \InvalidArgumentException('Quantidade desconto informado maior que 1.');
-                        }
-                        foreach ($this->desconto as $desconto) {
-                            if ($desconto->getTipo() === $desconto::Valor) {
-                                $titulo->addChild('codigoTipoDesconto', '1');
-                                $titulo->addChild('dataDescontoTitulo', $desconto->getData()->format('d.m.Y'));
-                                $titulo->addChild('valorDescontoTitulo', $desconto->getValor());
-                            } elseif ($desconto->getTipo() === $desconto::Percentual) {
-                                $titulo = $titulo->addChild('codigoTipoDesconto', '2');
-                                $titulo->addChild('dataDescontoTitulo', $desconto->getData()->format('d.m.Y'));
-                                $titulo->addChild('percentualDescontoTitulo', $desconto->getValor());
-                            } else {
-                                throw new \InvalidArgumentException('Código do tipo de desconto inválido.');
-                            }
-                        }
-                    } else {
-                        $titulo->addChild('codigoTipoDesconto', '');
-                    }
-
-
-                    $multa = $this->multa;
-                    if (!is_null($this->multa)) {
-                        $titulo->addChild('codigoTipoMulta', 2);
-                        $titulo->addChild('percentualMultaTitulo', $multa->getPercentual());
-                        $titulo->addChild('dataMultaTitulo', $multa->getData()->format('d.m.Y'));
-                    } else {
-                        $titulo->addChild('codigoTipoMulta', 0);
-                    }
-
-
-                    $juros = $this->juros;
-                    if (!is_null($this->juros)) {
-                        if ($juros->getTipo() === $this->juros::Isento) {
-                            $titulo->addChild('codigoTipoJuroMora', 0);
-                        } elseif ($juros->getTipo() === $this->juros::Diario) {
-                            $titulo->addChild('codigoTipoJuroMora', 1);
-                            $titulo->addChild('valorJuroMoraTitulo', $juros->getValor());
-                        } elseif ($juros->getTipo() === $this->juros::Mensal) {
-                            $titulo->addChild('codigoTipoJuroMora', 2);
-                            $titulo->addChild('percentualJuroMoraTitulo', $juros->getValor());
-                        } else {
-                            throw new \InvalidArgumentException('Código do tipo de juros inválido.');
-                        }
-                    } else {
-                        $titulo->addChild('codigoTipoJuroMora', 0);
-                    }
-
-                    $titulo->addChild('codigoAceiteTitulo', 'N');
-                    $titulo->addChild('codigoTipoTitulo', 99);
-
-                    $titulo->addChild('indicadorPermissaoRecebimentoParcial', 'N');
-                    $nossonumero = '000' . str_pad($this->getConvenio(), 7, '0') . str_pad($this->getNossoNumero(), 10, '0', STR_PAD_LEFT);
-                    $titulo->addChild('textoNumeroTituloCliente', $nossonumero);
-
-                    $titulo->addChild('codigoTipoInscricaoPagador', $this->pagador->getTipoDocumento() === 'CPF' ? 1 : 2);
-                    $titulo->addChild('numeroInscricaoPagador', $this->pagador->getDocumento());
-                    $titulo->addChild('nomePagador', substr(Helper::ascii($this->pagador->getNome()), 0, 60));
-                    $titulo->addChild('textoEnderecoPagador', substr(Helper::ascii($this->pagador->getLogradouro() . ' ' . $this->pagador->getNumero()), 0, 60));
-                    $titulo->addChild('numeroCepPagador', substr(Helper::number($this->pagador->getCep()), 0, 8));
-                    $titulo->addChild('nomeMunicipioPagador', substr(Helper::ascii($this->pagador->getCidade()), 0, 20));
-                    $titulo->addChild('nomeBairroPagador', substr(Helper::ascii($this->pagador->getBairro()), 0, 20));
-                    $titulo->addChild('siglaUfPagador', $this->pagador->getUf());
-                    $titulo->addChild('textoNumeroTelefonePagador', $this->pagador->getTelefone());
-
-                    $titulo->addChild('codigoChaveUsuario', 'J1234567');
-                    $titulo->addChild('codigoTipoCanalSolicitacao', 5);
-
-                    $result = $client->__soapCall("RegistroTituloCobranca", [$titulo]);
-
-                    if ($result->codigoRetornoPrograma !== 0) {
-                        throw new InvalidArgumentException($result->nomeProgramaErro, trim($result->textoMensagemErro));
-                    }
-
-                    $this->setCodigobarras($result->codigoBarraNumerico);
-                    $this->setLinhadigitavel($result->linhaDigitavel);
-                } catch (SoapFault $sf) {
-                    throw new Exception($sf->faultstring, 500);
-                } catch (Exception $e) {
-                    throw new Exception($e->getMessage(), 500, $e);
+                if ($this->isSandbox()) {
+                    /* Problema de SSL no Endpoint
+                    $endpoint = 'https://cobranca.homologa.bb.com.br:7101/Processos/Ws/RegistroCobrancaService.serviceagent?wsdl';
+                    */
+                    $endpoint = dirname(__FILE__) . '/../XSD/Banco do Brasil/RegistroCobrancaServiceHomologacao.xml';
+                } else {
+                    /* Problema de SSL no Endpoint
+                    $endpoint = 'https://cobranca.bb.com.br:7101/Processos/Ws/RegistroCobrancaService.serviceagent?wsdl';
+                    */
+                    $endpoint = dirname(__FILE__) . '/../XSD/Banco do Brasil/RegistroCobrancaService.xml';
                 }
+
+                $client = new SoapClient($endpoint,
+                    [
+                        'trace' => TRUE,
+                        'exceptions' => TRUE,
+                        'encoding' => 'UTF-8',
+                        'compression' => \SOAP_COMPRESSION_ACCEPT | \SOAP_COMPRESSION_GZIP,
+                        'cache_wsdl' => WSDL_CACHE_NONE,
+                        'connection_timeout' => 30,
+                        'stream_context' => $context
+                    ]
+                );
+
+                $titulo = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><Message/>');
+
+                $titulo->addChild('numeroConvenio', $this->getConvenio());
+                $titulo->addChild('numeroCarteira', $this->getCarteira());
+                $titulo->addChild('numeroVariacaoCarteira', $this->getVariacaCarteira());
+
+                $titulo->addChild('codigoModalidadeTitulo', 1);
+                $titulo->addChild('dataEmissaoTitulo', $this->getEmissao()->format('d.m.Y'));
+                $titulo->addChild('dataVencimentoTitulo', $this->getVencimento()->format('d.m.Y'));
+                $titulo->addChild('valorOriginalTitulo', $this->getValor());
+
+
+                if (count($this->desconto) > 0) {
+                    if (count($this->desconto) > 1) {
+                        throw new \InvalidArgumentException('Quantidade desconto informado maior que 1.');
+                    }
+                    foreach ($this->desconto as $desconto) {
+                        if ($desconto->getTipo() === $desconto::Valor) {
+                            $titulo->addChild('codigoTipoDesconto', '1');
+                            $titulo->addChild('dataDescontoTitulo', $desconto->getData()->format('d.m.Y'));
+                            $titulo->addChild('valorDescontoTitulo', $desconto->getValor());
+                        } elseif ($desconto->getTipo() === $desconto::Percentual) {
+                            $titulo = $titulo->addChild('codigoTipoDesconto', '2');
+                            $titulo->addChild('dataDescontoTitulo', $desconto->getData()->format('d.m.Y'));
+                            $titulo->addChild('percentualDescontoTitulo', $desconto->getValor());
+                        } else {
+                            throw new \InvalidArgumentException('Código do tipo de desconto inválido.');
+                        }
+                    }
+                } else {
+                    $titulo->addChild('codigoTipoDesconto', '');
+                }
+
+
+                $multa = $this->multa;
+                if (!is_null($this->multa)) {
+                    $titulo->addChild('codigoTipoMulta', 2);
+                    $titulo->addChild('percentualMultaTitulo', $multa->getPercentual());
+                    $titulo->addChild('dataMultaTitulo', $multa->getData()->format('d.m.Y'));
+                } else {
+                    $titulo->addChild('codigoTipoMulta', 0);
+                }
+
+
+                $juros = $this->juros;
+                if (!is_null($this->juros)) {
+                    if ($juros->getTipo() === $this->juros::Isento) {
+                        $titulo->addChild('codigoTipoJuroMora', 0);
+                    } elseif ($juros->getTipo() === $this->juros::Diario) {
+                        $titulo->addChild('codigoTipoJuroMora', 1);
+                        $titulo->addChild('valorJuroMoraTitulo', $juros->getValor());
+                    } elseif ($juros->getTipo() === $this->juros::Mensal) {
+                        $titulo->addChild('codigoTipoJuroMora', 2);
+                        $titulo->addChild('percentualJuroMoraTitulo', $juros->getValor());
+                    } else {
+                        throw new \InvalidArgumentException('Código do tipo de juros inválido.');
+                    }
+                } else {
+                    $titulo->addChild('codigoTipoJuroMora', 0);
+                }
+
+                $titulo->addChild('codigoAceiteTitulo', 'N');
+                $titulo->addChild('codigoTipoTitulo', 99);
+
+                $titulo->addChild('indicadorPermissaoRecebimentoParcial', 'N');
+                $nossonumero = '000' . str_pad($this->getConvenio(), 7, '0') . str_pad($this->getNossoNumero(), 10, '0', STR_PAD_LEFT);
+                $titulo->addChild('textoNumeroTituloCliente', $nossonumero);
+
+                $titulo->addChild('codigoTipoInscricaoPagador', $this->pagador->getTipoDocumento() === 'CPF' ? 1 : 2);
+                $titulo->addChild('numeroInscricaoPagador', $this->pagador->getDocumento());
+                $titulo->addChild('nomePagador', substr(Helper::ascii($this->pagador->getNome()), 0, 60));
+                $titulo->addChild('textoEnderecoPagador', substr(Helper::ascii($this->pagador->getLogradouro() . ' ' . $this->pagador->getNumero()), 0, 60));
+                $titulo->addChild('numeroCepPagador', substr(Helper::number($this->pagador->getCep()), 0, 8));
+                $titulo->addChild('nomeMunicipioPagador', substr(Helper::ascii($this->pagador->getCidade()), 0, 20));
+                $titulo->addChild('nomeBairroPagador', substr(Helper::ascii($this->pagador->getBairro()), 0, 20));
+                $titulo->addChild('siglaUfPagador', $this->pagador->getUf());
+                $titulo->addChild('textoNumeroTelefonePagador', $this->pagador->getTelefone());
+
+                $titulo->addChild('codigoChaveUsuario', 'J1234567');
+                $titulo->addChild('codigoTipoCanalSolicitacao', 5);
+
+                $result = $client->__soapCall("RegistroTituloCobranca", [$titulo]);
+
+                if ($result->codigoRetornoPrograma !== 0) {
+                    throw new InvalidArgumentException($result->nomeProgramaErro, trim($result->textoMensagemErro));
+                }
+
+                $this->setCodigobarras($result->codigoBarraNumerico);
+                $this->setLinhadigitavel($result->linhaDigitavel);
+            } catch (SoapFault $sf) {
+                throw new Exception($sf->faultstring, 500);
+            } catch (Exception $e) {
+                throw new Exception($e->getMessage(), 500, $e);
             }
+        }
     }
 
 
@@ -739,7 +758,7 @@ class BrasilService implements InterfaceBank
             $boleto->pagador = $pagador;
             $boleto->beneficiarioFinal = $beneficiarioFinal;
 
-            $boleto->indicadorPix = 'S';
+            $boleto->indicadorPix = $this->pix ? 'S' : 'N';
 
 
             if ($this->isSandbox()) {
@@ -871,4 +890,4 @@ class BrasilService implements InterfaceBank
 
     }
 }
- 
+
