@@ -791,6 +791,10 @@ class BrasilService implements InterfaceBank
                     foreach ($err->erros as $error) {
                         throw new InvalidArgumentException($error->codigo, $error->mensagem, $e->getCode());
                     }
+                } elseif (isset($err->error)) {
+                    throw new InvalidArgumentException($error->statusCode ?? 500, $error->error, $e->getCode());
+                } else {
+                    throw new InvalidArgumentException(500, 'Erro desconhecido', $e->getCode());
                 }
             } else {
                 throw new Exception($e->getMessage(), $e->getCode());
