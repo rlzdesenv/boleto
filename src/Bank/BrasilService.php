@@ -20,8 +20,6 @@ use DateTime;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 use SimpleXMLElement;
 use SoapClient;
 use SoapFault;
@@ -33,7 +31,7 @@ class BrasilService implements InterfaceBank
     /**
      * @var Datetime
      */
-    private $vencimento, $emissao;
+    private $vencimento, $emissao, $databaixa;
     private $valor;
     private $convenio;
     private $variacaocarteira;
@@ -794,7 +792,7 @@ class BrasilService implements InterfaceBank
                 } elseif (isset($err->error)) {
                     throw new InvalidArgumentException($error->statusCode ?? 500, $error->message, $e->getCode());
                 } else {
-                    throw new InvalidArgumentException(500, 'Erro desconhecido', $e->getCode());
+                    throw new InvalidArgumentException(500, 'Erro desconhecido' . $e->getMessage(), $e->getCode());
                 }
             } else {
                 throw new Exception($e->getMessage(), $e->getCode());
@@ -847,6 +845,64 @@ class BrasilService implements InterfaceBank
         }
     }
 
+    public function baixar()
+    {
+        try {           
+        
+            if ($this->getClient() !== 'API') {
+                throw new InvalidArgumentException('O método de cancelamento está disponivel apenas para o API do banco do Brasil.');
+            }
+    
+            if ($this->isSandbox()) {
+                $endpoint = 'https://api.hm.bb.com.br';
+            } else {
+                $endpoint = 'https://api.bb.com.br';
+            }
+    
+            $id = "000{$this->getConvenio()}{$this->getNossoNumero()}";
+    
+    
+            $endpoint .= "/cobrancas/v2/boletos/{$id}/baixar";
+    
+            $token = $this->getToken();
+    
+            $client = new Client(['verify' => false]);
+            $res = $client->request('POST', $endpoint, [
+                'headers' => ['Authorization' => 'Bearer ' . $token],
+                'query' => ['gw-dev-app-key' => $this->getAppKey()],
+                'json' => ['numeroConvenio' => $this->getConvenio()],
+            ]);
+    
+            if ($res->getStatusCode() === 200 || $res->getStatusCode() === 201) {
+                $body = $res->getBody()->getContents();
+                $data = json_decode($body);
+            }
+
+        } catch (RequestException $e) {
+            if ($e->hasResponse()) {
+                $err = json_decode($e->getResponse()->getBody()->getContents());
+                if (isset($err->erros)) {
+                    foreach ($err->erros as $error) {
+                        throw new InvalidArgumentException($error->codigo, $error->mensagem, $e->getCode());
+                    }
+                } elseif (isset($err->errors)) {
+                    foreach ($err->errors as $error) {
+                        throw new InvalidArgumentException($error->code, $error->message, $e->getCode());
+                    }
+                } elseif (isset($err->error)) {
+                    throw new InvalidArgumentException($error->statusCode ?? 500, $error->message, $e->getCode());
+                } else {
+                    throw new InvalidArgumentException(500, 'Erro desconhecido' . $e->getMessage(), $e->getCode());
+                }
+            } else {
+                throw new Exception($e->getMessage(), $e->getCode());
+            }
+        } catch (\Exception $e) {
+            throw new Exception($e->getMessage(), $e->getCode());
+        }
+
+    }
+
     /**
      * @return string
      */
@@ -892,6 +948,18 @@ class BrasilService implements InterfaceBank
             return 'cobranca.registro-boletos';
         }
 
+    }
+
+    
+    /**
+     * @param Datetime
+     */
+    public function getDataBaixa()
+    {
+        if (is_null($this->databaixa)) {
+            throw new \InvalidArgumentException('Data Baixa inválido.');
+        }
+        return $this->databaixa;
     }
 }
 
