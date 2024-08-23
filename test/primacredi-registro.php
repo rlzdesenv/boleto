@@ -12,8 +12,7 @@ try {
     $pagador    = new Pagador('', '', '', '', null, '', '', '', '', '');
     $beneficiario    = new Beneficiario('', '', '', '', null, '', '', '', '', '');
     $vencimento = new DateTime('2024-08-23');
-
-    // Multa e Juros precisa ser implementando só aceita valores expresso em reais
+    
     $juros      = new Juros(Juros::Mensal, 1, new DateTime('2024-08-23'));
     $multa      = new Multa(2, new DateTime('2024-08-23'));
 
