@@ -277,7 +277,7 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
 
     private function getNossoNumeroCalculado(): string
     {
-        $digito = $this->modulo_11($this->getBeneficiario()->getDocumento(), 11);
+        $digito = $this->modulo_11($this->getBeneficiario()->getDocumento());
         $agencia = str_pad($this->getAgencia(), 4, '0', STR_PAD_LEFT);
         $convenio = str_pad($this->getConvenio(), 6, '0', STR_PAD_LEFT);
         $nossonumero = str_pad(substr((string)$this->nossonumero, -6), 6, '0', STR_PAD_LEFT);
@@ -689,27 +689,5 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
         $client->__setSoapHeaders($header);
 
         return $client;
-    }
-
-    protected function modulo_11_invertido($num)
-    { // Calculo de Modulo 11 "Invertido" (com pesos de 9 a 2  e não de 2 a 9)
-        $ftini = 2;
-        $ftfim = 9;
-        $fator = $ftfim;
-        $soma = 0;
-
-        for ($i = strlen($num); $i > 0; $i--) {
-            $soma += substr($num, $i - 1, 1) * $fator;
-            if (--$fator < $ftini) {
-                $fator = $ftfim;
-            };
-        }
-
-        $digito = $soma % 11;
-        if ($digito > 9) {
-            $digito = 0;
-        }
-
-        return $digito;
     }
 }
