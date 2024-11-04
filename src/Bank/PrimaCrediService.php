@@ -31,6 +31,7 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
     private $linhadigitavel;
     private $prazodevolucao;
     private $agencia;
+    private $pixqrcode;
 
     /**
      * @var Pagador
@@ -177,16 +178,16 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
      * @param string $token
      * @return PrimaCrediService
      */
-    public function setToken($token): PrimaCrediService
+    public function setToken(string $token): PrimaCrediService
     {
         $this->token = $token;
         return $this;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    private function getToken()
+    private function getToken(): ?string
     {
         if (is_null($this->token)) {
             throw new \InvalidArgumentException('O parâmetro token nulo.');
@@ -446,7 +447,7 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
     /**
      * @throws Exception
      */
-    public function send()
+    public function send(): void
     {
         try {
 
@@ -458,18 +459,16 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
 
             $boleto = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><boleto/>');
 
-            // $boleto = $titulo->addChild('boleto');
-
             $pagador = $boleto->addChild('pagador');
             $pagador->addChild('nome', $this->pagador->getNome());
-            $pagador->addChild('nomeFantasia', '');
+            //$pagador->addChild('nomeFantasia', '.');
             $pagador->addChild('cpfCnpj', $this->pagador->getDocumento());
 
             $endereco = $pagador->addChild('endereco');
-            $endereco->addChild('endereco', $this->pagador->getLogradouro());
-            $endereco->addChild('numero', $this->pagador->getNumero());
-            $endereco->addChild('complemento', $this->pagador->getComplemento() ?: '');
-            $endereco->addChild('bairro', $this->pagador->getBairro());
+            $endereco->addChild('endereco', $this->pagador->getLogradouro()  ?: '.');
+            $endereco->addChild('numero', $this->pagador->getNumero() ?: 'S/N');
+            $endereco->addChild('complemento', $this->pagador->getComplemento() ?: '.');
+            $endereco->addChild('bairro', $this->pagador->getBairro() ?: '.');
             $endereco->addChild('cep', $this->pagador->getCep());
             $endereco->addChild('cidade', $this->pagador->getCidade());
             $endereco->addChild('uf', $this->pagador->getUf());
