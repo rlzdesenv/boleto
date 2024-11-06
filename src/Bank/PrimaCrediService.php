@@ -461,7 +461,9 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
 
             $pagador = $boleto->addChild('pagador');
             $pagador->addChild('nome', $this->pagador->getNome());
-            //$pagador->addChild('nomeFantasia', '.');
+            if($this->pagador->getTipoDocumento() == 'CNPJ') {
+				$pagador->addChild('nomeFantasia', $this->pagador->getNome());
+			}
             $pagador->addChild('cpfCnpj', $this->pagador->getDocumento());
 
             $endereco = $pagador->addChild('endereco');
