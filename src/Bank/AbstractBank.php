@@ -4,6 +4,7 @@ namespace Boleto\Bank;
 
 use Boleto\Entity\Beneficiario;
 use Boleto\Entity\Pagador;
+use Exception;
 
 /**
  * Created by PhpStorm.
@@ -191,12 +192,12 @@ class AbstractBank
         return $numero;
     }
 
-    protected function esquerda($entra, $comp)
+    protected function esquerda($entra, $comp): string
     {
         return substr($entra, 0, $comp);
     }
 
-    protected function direita($entra, $comp)
+    protected function direita($entra, $comp): string
     {
         return substr($entra, strlen($entra) - $comp, $comp);
     }
@@ -208,14 +209,14 @@ class AbstractBank
         return abs($interval->format('%R%a'));
     }
 
-    protected function geraCodigoBanco($numero)
+    protected function geraCodigoBanco($numero): string
     {
         $parte1 = substr($numero, 0, 3);
         $parte2 = $this->modulo_11($parte1);
         return $parte1 . "-" . $parte2;
     }
 
-    protected function codificar($codigo)
+    protected function codificar($codigo): string
     {
         $cbinicio = "NNNN";
         $cbfinal = "WNN";
@@ -233,7 +234,8 @@ class AbstractBank
         } else return '';
     }
 
-    public function getCodigoBarrasBase64($codigo = null, $altura = 49.3, $espmin = 1)
+
+    public function getCodigoBarrasBase64($codigo = null, $altura = 49.3, $espmin = 1): string
     {
         if (is_null($codigo)) {
             $codigo = $this->getCodigoBarras();
@@ -278,7 +280,7 @@ class AbstractBank
         return base64_encode($buffer);
     }
 
-    public function getLinhaDigitavelBase64($codigo = null, $altura = 35, $largura = 450, $fontsize = 11, $font = 'arialbd.ttf')
+    public function getLinhaDigitavelBase64($codigo = null, $altura = 35, $largura = 450, $fontsize = 11, $font = 'arialbd.ttf'): string
     {
         if (is_null($codigo)) {
             $codigo = $this->getLinhaDigitavel();
@@ -308,14 +310,14 @@ class AbstractBank
 
     }
 
-    protected function vencimentoJuliano(\DateTime $date)
+    protected function vencimentoJuliano(\DateTime $date): string
     {
         $dias = (int)$date->format('z') + 1;
         $year = $date->format('y');
         return str_pad($dias, 3, '0', STR_PAD_LEFT) . substr($year, -1);
     }
 
-    protected function linhaDigitavel($codigo)
+    protected function linhaDigitavel($codigo): string
     {
         // 01-03    -> Código do banco sem o digito
         // 04-04    -> Código da Moeda (9-Real)
@@ -365,8 +367,49 @@ class AbstractBank
         return "$campo1 $campo2 $campo3 $campo4 $campo5";
     }
 
+    /**
+     * @throws Exception
+     */
+    protected function codigoBarras($linhaDigitavel): string
+    {
+        // Remove todos os caracteres que não sejam números
+        $barra = preg_replace('/[^0-9]/', '', $linhaDigitavel);
+
+        // Exemplo de validação para a função modulo11_banco
+        if ($this->modulo_11('34191000000000000001753980229122525005423000') != 1) {
+            throw new Exception('Função "modulo11_banco" está com erro!');
+        }
+
+        // Verifica o comprimento da barra e ajusta conforme necessário
+        if (strlen($barra) < 47) {
+            $barra .= substr('00000000000', 0, 47 - strlen($barra));
+        }
+
+        if (strlen($barra) != 47) {
+            throw new Exception('A linha do código de barras está incompleta!' . strlen($barra));
+        }
+
+        // Reorganiza os segmentos da barra
+        $barra = substr($barra, 0, 4) .
+            substr($barra, 32, 15) .
+            substr($barra, 4, 5) .
+            substr($barra, 10, 10) .
+            substr($barra, 21, 10);
+
+        // Valida o dígito verificador
+        if ($this->modulo_11(substr($barra, 0, 4) . substr($barra, 5, 39)) != substr($barra, 4, 1)) {
+            $digito = substr($barra, 4, 1);
+            $digitoCalculado = $this->modulo_11(substr($barra, 0, 4) . substr($barra, 5, 39));
+
+            throw new Exception("Dígito verificador {$digito}, o correto é {$digitoCalculado} O sistema não altera automaticamente o dígito correto na quinta casa!");
+        }
+
+        return $barra;
+    }
+
     public function __destruct()
     {
     }
+
 
 }
