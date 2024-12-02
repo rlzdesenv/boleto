@@ -15,13 +15,17 @@ class Helper
 
     public static function number($str)
     {
+        if(empty($str)){
+            return $str;
+        }
+
         return preg_replace("/[^0-9]/", "", $str);
     }
 
-    public static function splitPhone($str)
+    public static function splitPhone($str): ?array
     {
 
-        if (is_null($str) || empty($str)) {
+        if (empty($str)) {
             return null;
         }
 
@@ -52,7 +56,7 @@ class Helper
 
     }
 
-    public static function padLeft($str, $length)
+    public static function padLeft($str, $length): string
     {
         return str_pad(self::number($str), $length, "0", STR_PAD_LEFT);
     }
@@ -68,7 +72,7 @@ class Helper
         return $array;
     }
 
-    public static function floatVal($number)
+    public static function floatVal($number): float
     {
         if (!is_numeric($number)) {
             $number = str_replace(['.', ','], ['', '.'], $number);
@@ -76,7 +80,7 @@ class Helper
         return floatval($number);
     }
 
-    public static function intVal($number)
+    public static function intVal($number): int
     {
         if (!is_numeric($number)) {
             $number = str_replace(['.', ','], ['', '.'], $number);
@@ -84,18 +88,35 @@ class Helper
         return intval($number);
     }
 
-    public static function numberFormat($number)
+    public static function numberFormat($number): ?string
     {
+        if(empty($number)){
+            return null;
+        }
+
         if (!is_numeric($number)) {
             $number = str_replace(['.', ','], ['', '.'], $number);
         }
         return number_format($number, 2, '.', '');
     }
 
-    public static function ascii($string)
+    public static function ascii($string): array|string|null
     {
-        return preg_replace('/[`^~\'"]/', null, str_replace('?', '', iconv('UTF-8', 'ASCII//TRANSLIT', $string)));
+        if (empty($string)) {
+            return null;
+        }
+        return preg_replace('/[`^~\'"]/', '', str_replace('?', '', iconv('UTF-8', 'ASCII//TRANSLIT', $string)));
     }
 
+    public static function substr($string, $start, $length = null): ?string
+    {
+        if (is_null($string)) {
+            return null;
+        }
+        if (is_null($length)) {
+            return mb_substr((string)$string, $start);
+        }
+        return mb_substr((string)$string, $start, $length);
+    }
 
 }
