@@ -4,7 +4,7 @@ namespace Boleto\Bank;
 
 use Boleto\Entity\Beneficiario;
 use Boleto\Entity\Pagador;
-use Exception;
+use Boleto\Exception\InvalidArgumentException;
 
 /**
  * Created by PhpStorm.
@@ -367,44 +367,41 @@ class AbstractBank
         return "$campo1 $campo2 $campo3 $campo4 $campo5";
     }
 
+
     /**
-     * @throws Exception
+     * @throws InvalidArgumentException
      */
-    protected function codigoBarras($linhaDigitavel): string
+    protected function convertLinhaDigitalCodigoBarras($linhaDigitavel): string
     {
-        // Remove todos os caracteres que não sejam números
-        $barra = preg_replace('/[^0-9]/', '', $linhaDigitavel);
+        // Remove caracteres não numéricos
+        $linhaDigitavel = preg_replace('/[^0-9]/', '', $linhaDigitavel);
 
-        // Exemplo de validação para a função modulo11_banco
-        if ($this->modulo_11('34191000000000000001753980229122525005423000') != 1) {
-            throw new Exception('Função "modulo11_banco" está com erro!');
+        // Verifica se a linha digitável tem 47 ou 48 dígitos
+        if (strlen($linhaDigitavel) !== 47 && strlen($linhaDigitavel) !== 48) {
+            throw new InvalidArgumentException('A linha digitável deve conter 47 ou 48 dígitos.');
         }
 
-        // Verifica o comprimento da barra e ajusta conforme necessário
-        if (strlen($barra) < 47) {
-            $barra .= substr('00000000000', 0, 47 - strlen($barra));
+        // Caso seja de 47 dígitos (boletos bancários comuns)
+        if (strlen($linhaDigitavel) === 47) {
+            $campo1 = substr($linhaDigitavel, 0, 9);  // Primeiro campo (posição 1 a 9)
+            $campo2 = substr($linhaDigitavel, 10, 10); // Segundo campo (posição 11 a 20)
+            $campo3 = substr($linhaDigitavel, 21, 10); // Terceiro campo (posição 22 a 31)
+            $campo4 = substr($linhaDigitavel, 32, 1);  // Dígito verificador geral (posição 33)
+            $campo5 = substr($linhaDigitavel, 33);     // Campo 5: valor e data (posição 34 a 47)
+
+            // Monta o código de barras no formato correto
+
+            return substr($campo1, 0, 4) .
+                $campo4 .
+                $campo5 .
+                substr($campo1, 4) .
+                substr($campo2, 0, 10) .
+                substr($campo3, 0, 10);
         }
 
-        if (strlen($barra) != 47) {
-            throw new Exception('A linha do código de barras está incompleta!' . strlen($barra));
-        }
-
-        // Reorganiza os segmentos da barra
-        $barra = substr($barra, 0, 4) .
-            substr($barra, 32, 15) .
-            substr($barra, 4, 5) .
-            substr($barra, 10, 10) .
-            substr($barra, 21, 10);
-
-        // Valida o dígito verificador
-        if ($this->modulo_11(substr($barra, 0, 4) . substr($barra, 5, 39)) != substr($barra, 4, 1)) {
-            $digito = substr($barra, 4, 1);
-            $digitoCalculado = $this->modulo_11(substr($barra, 0, 4) . substr($barra, 5, 39));
-
-            throw new Exception("Dígito verificador {$digito}, o correto é {$digitoCalculado} O sistema não altera automaticamente o dígito correto na quinta casa!");
-        }
-
-        return $barra;
+        // Caso seja de 48 dígitos (boletos de concessionárias)
+        // Os 48 dígitos já correspondem ao código de barras
+        return $linhaDigitavel;
     }
 
     public function __destruct()
