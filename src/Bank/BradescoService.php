@@ -36,7 +36,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
     private ?int $agencia;
     private ?int $conta;
     private ?string $nossonumero;
-      private string $codigobarras;
+    private string $codigobarras;
     private string $linhadigitavel;
     private string $pixqrcode;
     private int $prazodevolucao = 0;
@@ -373,7 +373,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
 
 
     /**
-     * @return mixed
+     * @return string|null
      */
     public function getPixQrCode(): ?string
     {
@@ -540,18 +540,18 @@ class BradescoService extends AbstractBank implements InterfaceBank
             }
 
 
-            $arr->isacdoTitloCobr = substr(Helper::ascii($this->pagador->getNome()), 0, 70); // Nome do devedor (Sacado)
-            $arr->elogdrSacdoTitlo = substr(Helper::ascii($this->pagador->getLogradouro()), 0, 40); // Logradouro do devedor (Sacado)
+            $arr->isacdoTitloCobr = Helper::substr(Helper::ascii($this->pagador->getNome()), 0, 70); // Nome do devedor (Sacado)
+            $arr->elogdrSacdoTitlo = Helper::substr(Helper::ascii($this->pagador->getLogradouro()), 0, 40); // Logradouro do devedor (Sacado)
             $arr->enroLogdrSacdo = (int)$this->pagador->getNumero(); // Número do logradouro do devedor
-            $arr->ecomplLogdrSacdo = substr(Helper::ascii($this->pagador->getComplemento()), 0, 15); // Complemento do logradouro do devedor (Sacado)
+            $arr->ecomplLogdrSacdo = Helper::substr(Helper::ascii($this->pagador->getComplemento()), 0, 15); // Complemento do logradouro do devedor (Sacado)
             $arr->ccepSacdoTitlo = $this->pagador->getCepPrefixo(); // CEP do devedor (Sacado)
             $arr->ccomplCepSacdo = $this->pagador->getCepSufixo(); // Complemento do CEP do devedor (Sacado)
-            $arr->ebairoLogdrSacdo = substr(Helper::ascii($this->pagador->getBairro()), 0, 40); // Bairro do logradouro do devedor (Sacado)
-            $arr->imunSacdoTitlo = substr(Helper::ascii($this->pagador->getCidade()), 0, 30); // Município do devedor (Sacado)
-            $arr->csglUfSacdo = substr(Helper::ascii($this->pagador->getUf()), 0, 2); // Sigla da Unidade Federativa do devedor (Sacado)
+            $arr->ebairoLogdrSacdo = Helper::substr(Helper::ascii($this->pagador->getBairro()), 0, 40); // Bairro do logradouro do devedor (Sacado)
+            $arr->imunSacdoTitlo = Helper::substr(Helper::ascii($this->pagador->getCidade()), 0, 30); // Município do devedor (Sacado)
+            $arr->csglUfSacdo = Helper::substr(Helper::ascii($this->pagador->getUf()), 0, 2); // Sigla da Unidade Federativa do devedor (Sacado)
             $arr->indCpfCnpjSacdo = $this->pagador->getTipoDocumento() === 'CPF' ? 1 : 2; // Indicador de CPF ou CNPJ do devedor
             $arr->nroCpfCnpjSacdo = Helper::number($this->pagador->getDocumento()); // Número do CPF ou CNPJ do devedor (Sacado)
-            $arr->renderEletrSacdo = substr(Helper::ascii($this->pagador->getEmail()), 0, 70); // Endereço eletrônico do devedor - e-mail (Sacado)
+            $arr->renderEletrSacdo = Helper::substr(Helper::ascii($this->pagador->getEmail()), 0, 70); // Endereço eletrônico do devedor - e-mail (Sacado)
 
             $now = new DateTime();
 
@@ -608,10 +608,10 @@ class BradescoService extends AbstractBank implements InterfaceBank
 
                 $body = json_decode($res->getBody()->getContents());
                 $linhaDigital = $body->linhaDig10;
-                $codigoBarras = $body->codBarras10; // Formato NNWWN
+                $codigoBarras = $this->convertLinhaDigitalCodigoBarras($linhaDigital);
                 $pix = $body->wqrcdPdraoMercd;
 
-                //$this->setCodigobarras($codigoBarras);
+                $this->setCodigobarras($codigoBarras);
                 $this->setLinhadigitavel($linhaDigital);
                 $this->setPixQrCode($pix);
             }
