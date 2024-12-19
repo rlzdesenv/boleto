@@ -13,7 +13,7 @@ use Boleto\Helper\Helper;
 
 class Beneficiario extends Pagador
 {
-    public function getDocumentoRaiz()
+    public function getDocumentoRaiz(): ?string
     {
         if ($this->getTipoDocumento() === 'CNPJ') {
             $cnpj = Helper::number($this->getDocumento());
@@ -23,7 +23,7 @@ class Beneficiario extends Pagador
 
     }
 
-    public function getDocumentoFilial()
+    public function getDocumentoFilial(): ?string
     {
         if ($this->getTipoDocumento() === 'CNPJ') {
             $cnpj = Helper::number($this->getDocumento());
@@ -32,7 +32,7 @@ class Beneficiario extends Pagador
         return null;
     }
 
-    public function getDocumentoControle()
+    public function getDocumentoControle(): ?string
     {
         if ($this->getTipoDocumento() === 'CNPJ') {
             $cnpj = Helper::number($this->getDocumento());

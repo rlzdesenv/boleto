@@ -12,11 +12,13 @@ namespace Boleto\Entity;
 class Certificado
 {
 
-    private $signcert;
-    private $privkey;
+    private \OpenSSLCertificate|false $signcert;
+    private false|\OpenSSLAsymmetricKey $privkey;
+    private string $pemContent;
 
     /**
      * Certificado constructor.
+     * @throws \Exception
      */
     public function __construct($file, $password)
     {
@@ -27,6 +29,16 @@ class Certificado
 
         $this->signcert = openssl_x509_read($result['cert']);
         $this->privkey = openssl_pkey_get_private($result['pkey'], $password);
+
+        // Combinar a chave privada e o certificado no formato PEM
+        $this->pemContent = $result['pkey'] . "\n" . $result['cert'];
+
+        // Incluir certificados intermediários (se houver)
+        if (!empty($result['extracerts'])) {
+            foreach ($result['extracerts'] as $extraCert) {
+                $this->pemContent .= "\n" . $extraCert;
+            }
+        }
 
         return $this;
     }
@@ -47,6 +59,9 @@ class Certificado
         return $this->privkey;
     }
 
+    /**
+     * @throws \Exception
+     */
     public function signText($txt)
     {
         try {
@@ -73,5 +88,20 @@ class Certificado
         }
     }
 
+    public function getCertificateFilePem(): string
+    {
+        $name = uniqid() . '.pem';
+
+        $file = trim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR . ltrim($name, DIRECTORY_SEPARATOR);
+
+        file_put_contents($file, $this->pemContent);
+
+        register_shutdown_function(function () use ($file) {
+            @unlink($file);
+        });
+
+        return $file;
+    }
 
 }
