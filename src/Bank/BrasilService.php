@@ -690,7 +690,7 @@ class BrasilService implements InterfaceBank
             }
 
             // JUROS
-            if (!is_null($this->juros)) {
+            if (!is_null($this->juros) ) {
                 $jurosMora = new \stdClass();
                 if ($this->juros->getTipo() === $this->juros::Isento) {
                     $jurosMora->tipo = 0;
@@ -701,7 +701,7 @@ class BrasilService implements InterfaceBank
                 } elseif ($this->juros->getTipo() === $this->juros::Mensal) {
                     $jurosMora->tipo = 2;
                     $jurosMora->data = $this->juros->getData()->format('d.m.Y');
-                    $jurosMora->valor = $this->juros->getValor();
+                    $jurosMora->porcentagem = $this->juros->getValor();
                 } else {
                     throw new \InvalidArgumentException('Código do tipo de juros inválido.');
                 }
