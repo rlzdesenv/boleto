@@ -621,8 +621,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
             if ($e->hasResponse()) {
                 $error = json_decode($e->getResponse()->getBody()->getContents());
                 if (isset($error->statusHttp)) {
-                    $code = $this->getErrorCode($error->errorMessage);
-
+                    $code = $this->getErrorCode($error->errorMessage) ?: crc32(trim($error->errorMessage));
                     throw new \Boleto\Exception\InvalidArgumentException($code, $error->errorMessage, $e->getCode());
                 }
                 throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
