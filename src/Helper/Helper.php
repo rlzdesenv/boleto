@@ -119,4 +119,49 @@ class Helper
         return mb_substr((string)$string, $start, $length);
     }
 
+    static function mask($str, $mask)
+    {
+        $str = self::getNumber($str);
+
+        if (empty($str)) {
+            return $str;
+        }
+
+        $text = '';
+        $k = 0;
+        for ($i = 0; $i <= Helper::strlen($mask) - 1; $i++) {
+            if ($mask[$i] == '#') {
+                if (isset ($str[$k]))
+                    $text .= $str[$k++];
+            } else {
+                if (isset ($mask[$i]))
+                    $text .= $mask[$i];
+            }
+        }
+        return $text;
+    }
+
+    static function getNumber($str): array|string|null
+    {
+        if (is_null($str)) {
+            return null;
+        }
+        return preg_replace("/[^0-9]/", "", $str);
+    }
+
+    public static function strlen($str): int
+    {
+        if (is_null($str)) {
+            return 0;
+        }
+        return strlen($str);
+    }
+
+    public static function alfaNumerico($str): string|null
+    {
+        if (is_null($str)) {
+            return null;
+        }
+        return preg_replace('/[^a-zA-Z0-9 ]/', '', $str);
+    }
 }
