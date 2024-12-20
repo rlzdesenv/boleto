@@ -15,10 +15,10 @@ use Boleto\Entity\Desconto;
 use Boleto\Entity\Juros;
 use Boleto\Entity\Multa;
 use Boleto\Entity\Pagador;
+use Boleto\Helper\Helper;
 use Cache\Adapter\Apcu\ApcuCachePool;
 use DateTime;
 use Exception;
-use Firebase\JWT\JWT;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
@@ -553,20 +553,20 @@ class SantanderService extends AbstractBank implements InterfaceBank
 
             $payer = new stdClass();
 
-            $payer->name = $this->pagador->getNome();
+            $payer->name = mb_substr(Helper::alfaNumerico($this->pagador->getNome()), 0, 40);
             $payer->documentType = $this->pagador->getTipoDocumento();
             $payer->documentNumber = $this->pagador->getDocumento();
-            $payer->address = $this->pagador->getLogradouro() . ($this->pagador->getNumero() ? ', ' . $this->pagador->getNumero() : '');
-            $payer->neighborhood = $this->pagador->getBairro();
-            $payer->city = $this->pagador->getCidade();
-            $payer->state = $this->pagador->getUf();
-            $payer->zipCode = $this->pagador->getCep();
+            $payer->address = mb_substr(Helper::alfaNumerico($this->pagador->getLogradouro() . ($this->pagador->getNumero() ? ', ' . $this->pagador->getNumero() : '')), 0, 40);
+            $payer->neighborhood = Helper::alfaNumerico($this->pagador->getBairro());
+            $payer->city = mb_substr(Helper::alfaNumerico($this->pagador->getCidade()), 0, 20);
+            $payer->state = Helper::alfaNumerico($this->pagador->getUf());
+            $payer->zipCode = Helper::mask($this->pagador->getCep(), '#####-###');
 
 
             $arr->payer = $payer;
 
             $beneficiary = new stdClass();
-            $beneficiary->name = $this->beneficiario->getNome();
+            $beneficiary->name = mb_substr(Helper::alfaNumerico($this->beneficiario->getNome()), 0, 40);
             $beneficiary->documentType = $this->beneficiario->getTipoDocumento();
             $beneficiary->documentNumber = $this->beneficiario->getDocumento();
 
@@ -675,7 +675,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
             ];
 
             if ($this->isSandbox()) {
-                //$endpoint = 'https://trust-sandbox.api.santander.com.br';
+                $endpoint = 'https://trust-sandbox.api.santander.com.br';
                 $endpoint = 'https://trust-open-h.api.santander.com.br';
             } else {
                 $endpoint = 'https://trust-open.api.santander.com.br';
@@ -725,7 +725,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
 
     /**
      * @throws \Boleto\Exception\InvalidArgumentException
-     * @throws Exception|GuzzleException
+     * @throws Exception
      */
     public function baixar(): void
     {
@@ -739,8 +739,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
             ];
 
             if ($this->isSandbox()) {
-                //$endpoint = 'https://trust-sandbox.api.santander.com.br';
-                $endpoint = 'https://trust-open-h.api.santander.com.br';
+                $endpoint = 'https://trust-sandbox.api.santander.com.br';
             } else {
                 $endpoint = 'https://trust-open.api.santander.com.br';
             }
@@ -787,7 +786,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 $time = time();
 
                 if ($this->isSandbox()) {
-                    //$endpoint = 'https://trust-sandbox.api.santander.com.br';
+                    $endpoint = 'https://trust-sandbox.api.santander.com.br';
                     $endpoint = 'https://trust-open-h.api.santander.com.br';
                 } else {
                     $endpoint = 'https://trust-open.api.santander.com.br';
