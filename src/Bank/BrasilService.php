@@ -19,79 +19,55 @@ use Cache\Adapter\Apcu\ApcuCachePool;
 use DateTime;
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Exception\RequestException;
-use SimpleXMLElement;
-use SoapClient;
-use SoapFault;
 
 class BrasilService implements InterfaceBank
 {
 
-
-    /**
-     * @var Datetime
-     */
-    private $vencimento, $emissao, $databaixa;
-    private $valor;
-    private $convenio;
-    private $variacaocarteira;
-    private $nossonumero;
-    private $carteira;
-    private $codigobarras;
-    private $linhadigitavel;
-    private $pixqrcode;
-    private $prazodevolucao;
-    private $pix = true;
-
-    /**
-     * @var Pagador
-     */
-    private $pagador;
-
-    /**
-     * @var Beneficiario
-     */
-    private $beneficiario;
-
-    /**
-     * @var Juros
-     */
-    private $juros;
-
-    /**
-     * @var Multa
-     */
-    private $multa;
+    private DateTime $emissao;
+    private DateTime $vencimento;
+    private float $valor;
+    private string $convenio;
+    private string $variacaocarteira;
+    private string $nossonumero;
+    private string $carteira;
+    private string $codigobarras;
+    private string $linhadigitavel;
+    private ?string $pixQrCode;
+    private int $prazodevolucao;
+    private bool $pix = true;
+    private Pagador $pagador;
+    private Beneficiario $beneficiario;
+    private Juros $juros;
+    private Multa $multa;
 
     /**
      * @var Desconto[]
      */
-    private $desconto = [];
+    private array $desconto = [];
 
-    private $clientId;
-    private $secretId;
-    private $cache;
-
-    private $sandbox = false;
-
-    private $client = 'WEBSERVICE';
+    private string $clientId;
+    private string $secretId;
+    private ApcuCachePool $cache;
+    private bool $sandbox = false;
+    private string $client = 'WEBSERVICE';
     private $appKey = null;
 
 
     /**
      * BrasilService constructor.
      * @param DateTime|null $vencimento
-     * @param null $valor
+     * @param float|null $valor
      * @param null $nossonumero
      * @param null $carteira
      * @param null $convenio
      * @param null $variacaocarteira
      * @param Pagador|null $pagador
      * @param null $clientId
-     * @param null $secredId
-     * @throws Exception
+     * @param null $secretId
      */
-    public function __construct(Datetime $vencimento = null, $valor = null, $nossonumero = null, $carteira = null, $convenio = null, $variacaocarteira = null, Pagador $pagador = null, $clientId = null, $secredId = null)
+    public function __construct(Datetime $vencimento = null, float $valor = null, $nossonumero = null, $carteira = null, $convenio = null, $variacaocarteira = null, Pagador $pagador = null, $clientId = null, $secretId = null)
     {
         $this->cache = new ApcuCachePool();
 
@@ -104,14 +80,14 @@ class BrasilService implements InterfaceBank
         $this->variacaocarteira = $variacaocarteira;
         $this->pagador = $pagador;
         $this->clientId = $clientId;
-        $this->secretId = $secredId;
+        $this->secretId = $secretId;
     }
 
     /**
      * @param Datetime $date
      * @return BrasilService
      */
-    public function setEmissao(Datetime $date)
+    public function setEmissao(Datetime $date): BrasilService
     {
         $this->emissao = $date;
         return $this;
@@ -121,7 +97,7 @@ class BrasilService implements InterfaceBank
      * @param Datetime $date
      * @return BrasilService
      */
-    public function setVencimento(Datetime $date)
+    public function setVencimento(Datetime $date): BrasilService
     {
         $this->vencimento = $date;
         return $this;
@@ -131,47 +107,47 @@ class BrasilService implements InterfaceBank
      * @param double $valor
      * @return BrasilService
      */
-    public function setValor($valor)
+    public function setValor(float $valor): BrasilService
     {
         $this->valor = $valor;
         return $this;
     }
 
     /**
-     * @param int $nossonumero
+     * @param string $nossonumero
      * @return BrasilService
      */
-    public function setNossoNumero($nossonumero)
+    public function setNossoNumero(string $nossonumero): BrasilService
     {
         $this->nossonumero = $nossonumero;
         return $this;
     }
 
     /**
-     * @param int $convenio
+     * @param string $convenio
      * @return BrasilService
      */
-    public function setConvenio($convenio)
+    public function setConvenio(string $convenio): BrasilService
     {
         $this->convenio = $convenio;
         return $this;
     }
 
     /**
-     * @param int $variacaocarteira
+     * @param string $variacaocarteira
      * @return BrasilService
      */
-    public function setVariacaoCarteira($variacaocarteira)
+    public function setVariacaoCarteira(string $variacaocarteira): BrasilService
     {
         $this->variacaocarteira = $variacaocarteira;
         return $this;
     }
 
     /**
-     * @param int $carteira
+     * @param string $carteira
      * @return BrasilService
      */
-    public function setCarteira($carteira)
+    public function setCarteira(string $carteira): BrasilService
     {
         $this->carteira = $carteira;
         return $this;
@@ -181,7 +157,7 @@ class BrasilService implements InterfaceBank
      * @param Pagador $pagador
      * @return BrasilService
      */
-    public function setPagador(Pagador $pagador = null)
+    public function setPagador(Pagador $pagador): BrasilService
     {
         $this->pagador = $pagador;
         return $this;
@@ -209,17 +185,17 @@ class BrasilService implements InterfaceBank
      * @param string $clientId
      * @return BrasilService
      */
-    public function setClientId($clientId)
+    public function setClientId(string $clientId): BrasilService
     {
         $this->clientId = $clientId;
         return $this;
     }
 
     /**
-     * @param string $clientId
+     * @param string $secretId
      * @return BrasilService
      */
-    public function setSecretId($secretId)
+    public function setSecretId(string $secretId): BrasilService
     {
         $this->secretId = $secretId;
         return $this;
@@ -228,9 +204,9 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    private function getClientId()
+    private function getClientId(): string
     {
-        if (is_null($this->clientId)) {
+        if (empty($this->clientId)) {
             throw new \InvalidArgumentException('O parâmetro clientId nulo.');
         }
         return $this->clientId;
@@ -239,9 +215,9 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    private function getSecretId()
+    private function getSecretId(): string
     {
-        if (is_null($this->clientId)) {
+        if (empty($this->clientId)) {
             throw new \InvalidArgumentException('O parâmetro secretId nulo.');
         }
         return $this->secretId;
@@ -250,58 +226,59 @@ class BrasilService implements InterfaceBank
     /**
      * @param string $codigobarras
      */
-    private function setCodigobarras($codigobarras)
+    private function setCodigobarras(string $codigobarras): void
     {
         $this->codigobarras = $codigobarras;
     }
 
     /**
      * @param string $linhadigitavel
+     * @return void
      */
-    private function setLinhadigitavel($linhadigitavel)
+    private function setLinhadigitavel(string $linhadigitavel): void
     {
         $this->linhadigitavel = $linhadigitavel;
     }
 
     /**
-     * @param Datetime
+     * @return DateTime
      */
-    public function getEmissao()
+    public function getEmissao(): DateTime
     {
-        if (is_null($this->emissao)) {
-            throw new \InvalidArgumentException('Data Emissäo inválido.');
+        if (empty($this->emissao)) {
+            throw new \InvalidArgumentException('Data Emissão inválido.');
         }
         return $this->emissao;
     }
 
     /**
-     * @param Datetime
+     * @return DateTime
      */
-    public function getVencimento()
+    public function getVencimento(): DateTime
     {
-        if (is_null($this->vencimento)) {
+        if (empty($this->vencimento)) {
             throw new \InvalidArgumentException('Data Vencimento inválido.');
         }
         return $this->vencimento;
     }
 
     /**
-     * @return int
+     * @return string
      */
-    public function getCarteira()
+    public function getCarteira(): string
     {
-        if (is_null($this->carteira)) {
+        if (empty($this->carteira)) {
             throw new \InvalidArgumentException('Carteira inválido.');
         }
         return $this->carteira;
     }
 
     /**
-     * @return double
+     * @return float
      */
-    public function getValor()
+    public function getValor(): float
     {
-        if (is_null($this->valor)) {
+        if (empty($this->valor)) {
             throw new \InvalidArgumentException('Valor inválido.');
         }
         return $this->valor;
@@ -310,9 +287,9 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    public function getNossoNumero()
+    public function getNossoNumero(): string
     {
-        if (is_null($this->nossonumero)) {
+        if (empty($this->nossonumero)) {
             throw new \InvalidArgumentException('Nosso Numero inválido.');
         }
         return $this->nossonumero;
@@ -321,7 +298,7 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    public function getLinhaDigitavel()
+    public function getLinhaDigitavel(): string
     {
         return $this->linhadigitavel;
     }
@@ -329,7 +306,7 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    public function getCodigoBarras()
+    public function getCodigoBarras(): string
     {
         return $this->codigobarras;
     }
@@ -337,9 +314,9 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    private function getConvenio()
+    private function getConvenio(): string
     {
-        if (is_null($this->convenio)) {
+        if (empty($this->convenio)) {
             throw new \InvalidArgumentException('Convênio inválido.');
         }
         return $this->convenio;
@@ -348,9 +325,9 @@ class BrasilService implements InterfaceBank
     /**
      * @return string
      */
-    private function getVariacaCarteira()
+    private function getVariacaoCarteira(): string
     {
-        if (is_null($this->variacaocarteira)) {
+        if (empty($this->variacaocarteira)) {
             throw new \InvalidArgumentException('Variação Carteira inválido.');
         }
         return $this->variacaocarteira;
@@ -395,7 +372,7 @@ class BrasilService implements InterfaceBank
     /**
      * @return Desconto[]
      */
-    public function getDesconto(): Desconto
+    public function getDesconto(): array
     {
         return $this->desconto;
     }
@@ -406,25 +383,25 @@ class BrasilService implements InterfaceBank
      */
     public function setDesconto(Desconto $desconto): BrasilService
     {
-        array_push($this->desconto, $desconto);
+        $this->desconto[] = $desconto;
         return $this;
     }
 
     /**
-     * @return mixed
+     * @return string|null
      */
     public function getPixQrCode(): ?string
     {
-        return $this->pixqrcode;
+        return $this->pixQrCode;
     }
 
     /**
-     * @param mixed $pixqrcode
+     * @param string|null $pixQrCode
      * @return BrasilService
      */
-    public function setPixQrCode($pixqrcode)
+    public function setPixQrCode(?string $pixQrCode): BrasilService
     {
-        $this->pixqrcode = $pixqrcode;
+        $this->pixQrCode = $pixQrCode;
         return $this;
     }
 
@@ -450,16 +427,16 @@ class BrasilService implements InterfaceBank
     /**
      * @return int
      */
-    public function getPrazoDevolucao()
+    public function getPrazoDevolucao(): int
     {
         return $this->prazodevolucao ?: 0;
     }
 
     /**
      * @param mixed $prazodevolucao
-     * @return CaixaService
+     * @return BrasilService
      */
-    public function setPrazoDevolucao(int $prazodevolucao)
+    public function setPrazoDevolucao(int $prazodevolucao): BrasilService
     {
         $this->prazodevolucao = $prazodevolucao;
         return $this;
@@ -468,173 +445,33 @@ class BrasilService implements InterfaceBank
     /**
      * @return boolean
      */
-    public function getGerarPix()
+    public function getGerarPix(): bool
     {
-        return this->píx;
+        return $this->pix;
     }
 
     /**
-     * @param boolean $prix
-     * @return CaixaService
+     * @param boolean $pix
+     * @return BrasilService
      */
-    public function setGerarPix(bool $pix)
+    public function setGerarPix(bool $pix): BrasilService
     {
         $this->pix = $pix;
         return $this;
     }
 
 
-    public function send()
-    {
-        if ($this->getClient() === 'API') {
-            $this->sendApi();
-        } else {
-            try {
-                $token = $this->getToken();
-
-                $httpHeaders = [
-                    'http' => [
-                        'protocol_version' => 1.1,
-                        'header' => "Authorization: Bearer " . $token . "\r\n" . "Cache-Control: no-cache"
-                    ],
-                    'ssl' => [
-                        'verify_peer' => false,
-                        'verify_peer_name' => false,
-                        'allow_self_signed' => true
-                    ]
-                ];
-
-                $context = stream_context_create($httpHeaders);
-
-                if ($this->isSandbox()) {
-                    /* Problema de SSL no Endpoint
-                    $endpoint = 'https://cobranca.homologa.bb.com.br:7101/Processos/Ws/RegistroCobrancaService.serviceagent?wsdl';
-                    */
-                    $endpoint = dirname(__FILE__) . '/../XSD/Banco do Brasil/RegistroCobrancaServiceHomologacao.xml';
-                } else {
-                    /* Problema de SSL no Endpoint
-                    $endpoint = 'https://cobranca.bb.com.br:7101/Processos/Ws/RegistroCobrancaService.serviceagent?wsdl';
-                    */
-                    $endpoint = dirname(__FILE__) . '/../XSD/Banco do Brasil/RegistroCobrancaService.xml';
-                }
-
-                $client = new SoapClient($endpoint,
-                    [
-                        'trace' => TRUE,
-                        'exceptions' => TRUE,
-                        'encoding' => 'UTF-8',
-                        'compression' => \SOAP_COMPRESSION_ACCEPT | \SOAP_COMPRESSION_GZIP,
-                        'cache_wsdl' => WSDL_CACHE_NONE,
-                        'connection_timeout' => 30,
-                        'stream_context' => $context
-                    ]
-                );
-
-                $titulo = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><Message/>');
-
-                $titulo->addChild('numeroConvenio', $this->getConvenio());
-                $titulo->addChild('numeroCarteira', $this->getCarteira());
-                $titulo->addChild('numeroVariacaoCarteira', $this->getVariacaCarteira());
-
-                $titulo->addChild('codigoModalidadeTitulo', 1);
-                $titulo->addChild('dataEmissaoTitulo', $this->getEmissao()->format('d.m.Y'));
-                $titulo->addChild('dataVencimentoTitulo', $this->getVencimento()->format('d.m.Y'));
-                $titulo->addChild('valorOriginalTitulo', $this->getValor());
-
-
-                if (count($this->desconto) > 0) {
-                    if (count($this->desconto) > 1) {
-                        throw new \InvalidArgumentException('Quantidade desconto informado maior que 1.');
-                    }
-                    foreach ($this->desconto as $desconto) {
-                        if ($desconto->getTipo() === $desconto::Valor) {
-                            $titulo->addChild('codigoTipoDesconto', '1');
-                            $titulo->addChild('dataDescontoTitulo', $desconto->getData()->format('d.m.Y'));
-                            $titulo->addChild('valorDescontoTitulo', $desconto->getValor());
-                        } elseif ($desconto->getTipo() === $desconto::Percentual) {
-                            $titulo = $titulo->addChild('codigoTipoDesconto', '2');
-                            $titulo->addChild('dataDescontoTitulo', $desconto->getData()->format('d.m.Y'));
-                            $titulo->addChild('percentualDescontoTitulo', $desconto->getValor());
-                        } else {
-                            throw new \InvalidArgumentException('Código do tipo de desconto inválido.');
-                        }
-                    }
-                } else {
-                    $titulo->addChild('codigoTipoDesconto', '');
-                }
-
-
-                $multa = $this->multa;
-                if (!is_null($this->multa)) {
-                    $titulo->addChild('codigoTipoMulta', 2);
-                    $titulo->addChild('percentualMultaTitulo', $multa->getPercentual());
-                    $titulo->addChild('dataMultaTitulo', $multa->getData()->format('d.m.Y'));
-                } else {
-                    $titulo->addChild('codigoTipoMulta', 0);
-                }
-
-
-                $juros = $this->juros;
-                if (!is_null($this->juros)) {
-                    if ($juros->getTipo() === $this->juros::Isento) {
-                        $titulo->addChild('codigoTipoJuroMora', 0);
-                    } elseif ($juros->getTipo() === $this->juros::Diario) {
-                        $titulo->addChild('codigoTipoJuroMora', 1);
-                        $titulo->addChild('valorJuroMoraTitulo', $juros->getValor());
-                    } elseif ($juros->getTipo() === $this->juros::Mensal) {
-                        $titulo->addChild('codigoTipoJuroMora', 2);
-                        $titulo->addChild('percentualJuroMoraTitulo', $juros->getValor());
-                    } else {
-                        throw new \InvalidArgumentException('Código do tipo de juros inválido.');
-                    }
-                } else {
-                    $titulo->addChild('codigoTipoJuroMora', 0);
-                }
-
-                $titulo->addChild('codigoAceiteTitulo', 'N');
-                $titulo->addChild('codigoTipoTitulo', 99);
-
-                $titulo->addChild('indicadorPermissaoRecebimentoParcial', 'N');
-                $nossonumero = '000' . str_pad($this->getConvenio(), 7, '0') . str_pad($this->getNossoNumero(), 10, '0', STR_PAD_LEFT);
-                $titulo->addChild('textoNumeroTituloCliente', $nossonumero);
-
-                $titulo->addChild('codigoTipoInscricaoPagador', $this->pagador->getTipoDocumento() === 'CPF' ? 1 : 2);
-                $titulo->addChild('numeroInscricaoPagador', $this->pagador->getDocumento());
-                $titulo->addChild('nomePagador', substr(Helper::ascii($this->pagador->getNome()), 0, 60));
-                $titulo->addChild('textoEnderecoPagador', substr(Helper::ascii($this->pagador->getLogradouro() . ' ' . $this->pagador->getNumero()), 0, 60));
-                $titulo->addChild('numeroCepPagador', substr(Helper::number($this->pagador->getCep()), 0, 8));
-                $titulo->addChild('nomeMunicipioPagador', substr(Helper::ascii($this->pagador->getCidade()), 0, 20));
-                $titulo->addChild('nomeBairroPagador', substr(Helper::ascii($this->pagador->getBairro()), 0, 20));
-                $titulo->addChild('siglaUfPagador', $this->pagador->getUf());
-                $titulo->addChild('textoNumeroTelefonePagador', $this->pagador->getTelefone());
-
-                $titulo->addChild('codigoChaveUsuario', 'J1234567');
-                $titulo->addChild('codigoTipoCanalSolicitacao', 5);
-
-                $result = $client->__soapCall("RegistroTituloCobranca", [$titulo]);
-
-                if ($result->codigoRetornoPrograma !== 0) {
-                    throw new InvalidArgumentException($result->nomeProgramaErro, trim($result->textoMensagemErro));
-                }
-
-                $this->setCodigobarras($result->codigoBarraNumerico);
-                $this->setLinhadigitavel($result->linhaDigitavel);
-            } catch (SoapFault $sf) {
-                throw new Exception($sf->faultstring, 500);
-            } catch (Exception $e) {
-                throw new Exception($e->getMessage(), 500, $e);
-            }
-        }
-    }
-
-
-    private function sendApi()
+    /**
+     * @throws InvalidArgumentException
+     * @throws Exception|GuzzleException
+     */
+    public function send(): void
     {
         try {
             $boleto = new \stdClass();
             $boleto->numeroConvenio = $this->getConvenio();
             $boleto->numeroCarteira = $this->getCarteira();
-            $boleto->numeroVariacaoCarteira = $this->getVariacaCarteira();
+            $boleto->numeroVariacaoCarteira = $this->getVariacaoCarteira();
             $boleto->codigoModalidade = 0;
             $boleto->dataEmissao = $this->getEmissao()->format('d.m.Y');
             $boleto->dataVencimento = $this->getVencimento()->format('d.m.Y');
@@ -690,8 +527,8 @@ class BrasilService implements InterfaceBank
             }
 
             // JUROS
-            if (!is_null($this->juros) ) {
-                $jurosMora = new \stdClass();
+            $jurosMora = new \stdClass();
+            if (!empty($this->juros)) {
                 if ($this->juros->getTipo() === $this->juros::Isento) {
                     $jurosMora->tipo = 0;
                 } elseif ($this->juros->getTipo() === $this->juros::Diario) {
@@ -705,25 +542,21 @@ class BrasilService implements InterfaceBank
                 } else {
                     throw new \InvalidArgumentException('Código do tipo de juros inválido.');
                 }
-                $boleto->jurosMora = $jurosMora;
             } else {
-                $jurosMora = new \stdClass();
                 $jurosMora->tipo = 0;
-                $boleto->jurosMora = $jurosMora;
             }
+            $boleto->jurosMora = $jurosMora;
 
             // MULTA
-            if (!is_null($this->multa)) {
-                $multa = new \stdClass();
+            $multa = new \stdClass();
+            if (!empty($this->multa)) {
                 $multa->tipo = 2;
                 $multa->porcentagem = $this->multa->getPercentual();
                 $multa->data = $this->multa->getData()->format('d.m.Y');
-                $boleto->multa = $multa;
             } else {
-                $multa = new \stdClass();
                 $multa->tipo = 0;
-                $boleto->multa = $multa;
             }
+            $boleto->multa = $multa;
 
 
             $pagador = new \stdClass();
@@ -845,34 +678,39 @@ class BrasilService implements InterfaceBank
         }
     }
 
-    public function baixar()
+    /**
+     * @throws InvalidArgumentException
+     * @throws GuzzleException
+     * @throws Exception
+     */
+    public function baixar(): void
     {
-        try {           
-        
+        try {
+
             if ($this->getClient() !== 'API') {
-                throw new InvalidArgumentException('O método de cancelamento está disponivel apenas para o API do banco do Brasil.');
+                throw new Exception('O método de cancelamento está disponível apenas para o API do banco do Brasil.');
             }
-    
+
             if ($this->isSandbox()) {
                 $endpoint = 'https://api.hm.bb.com.br';
             } else {
                 $endpoint = 'https://api.bb.com.br';
             }
-    
+
             $id = "000{$this->getConvenio()}{$this->getNossoNumero()}";
-    
-    
+
+
             $endpoint .= "/cobrancas/v2/boletos/{$id}/baixar";
-    
+
             $token = $this->getToken();
-    
+
             $client = new Client(['verify' => false]);
             $res = $client->request('POST', $endpoint, [
                 'headers' => ['Authorization' => 'Bearer ' . $token],
                 'query' => ['gw-dev-app-key' => $this->getAppKey()],
                 'json' => ['numeroConvenio' => $this->getConvenio()],
             ]);
-    
+
             if ($res->getStatusCode() === 200 || $res->getStatusCode() === 201) {
                 $body = $res->getBody()->getContents();
                 $data = json_decode($body);
@@ -950,16 +788,6 @@ class BrasilService implements InterfaceBank
 
     }
 
-    
-    /**
-     * @param Datetime
-     */
-    public function getDataBaixa()
-    {
-        if (is_null($this->databaixa)) {
-            throw new \InvalidArgumentException('Data Baixa inválido.');
-        }
-        return $this->databaixa;
-    }
+
 }
 
