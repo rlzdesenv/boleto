@@ -27,8 +27,8 @@ use SoapFault;
 class BrasilService implements InterfaceBank
 {
 
-    private DateTime $emissao;
-    private DateTime $vencimento;
+    private ?DateTime $emissao;
+    private ?DateTime $vencimento;
     private float $valor;
     private string $convenio;
     private string $variacaocarteira;
