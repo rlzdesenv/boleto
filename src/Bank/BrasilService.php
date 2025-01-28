@@ -41,8 +41,8 @@ class BrasilService implements InterfaceBank
     private bool $pix = true;
     private Pagador $pagador;
     private Beneficiario $beneficiario;
-    private Juros $juros;
-    private Multa $multa;
+    private ?Juros $juros = null;
+    private ?Multa $multa = null;
 
     /**
      * @var Desconto[]
@@ -621,6 +621,7 @@ class BrasilService implements InterfaceBank
 
                 $this->setCodigobarras($result->codigoBarraNumerico);
                 $this->setLinhadigitavel($result->linhaDigitavel);
+                $this->setPixQrCode(null);
             } catch (SoapFault $sf) {
                 throw new Exception($sf->faultstring, 500);
             } catch (Exception $e) {
@@ -720,6 +721,7 @@ class BrasilService implements InterfaceBank
             }
 
             // MULTA
+            $multa = $this->multa;
             if (!is_null($this->multa)) {
                 $multa = new \stdClass();
                 $multa->tipo = 2;
