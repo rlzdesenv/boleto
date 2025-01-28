@@ -17,61 +17,44 @@ use Boleto\Entity\Pagador;
 use Boleto\Exception\InvalidArgumentException;
 use Boleto\Helper\Helper;
 use Boleto\Service\CaixaSoapCliente;
+use DateTime;
+use Exception;
+use SimpleXMLElement;
 
 
 class CaixaService implements InterfaceBank
 {
-
-
-    /**
-     * @var \DateTime
-     */
-    private $vencimento, $emissao;
-    private $valor;
-    private $convenio;
-    private $nossonumero;
-    private $carteira;
-    private $codigobarras;
-    private $linhadigitavel;
-    private $prazodevolucao;
-
-
-    /**
-     * @var Pagador
-     */
-    private $pagador;
-
-    /**
-     * @var Beneficiario
-     */
-    private $beneficiario;
-
-    /**
-     * @var Juros
-     */
-    private $juros;
-
-    /**
-     * @var Multa
-     */
-    private $multa;
+    private DateTime|null $vencimento, $emissao;
+    private float|null $valor;
+    private string|null $convenio;
+    private string|null $nossonumero;
+    private string $carteira;
+    private string $codigobarras;
+    private string $linhadigitavel;
+    private int $prazodevolucao;
+    private Pagador|null $pagador;
+    private Beneficiario $beneficiario;
+    private Juros $juros;
+    private Multa $multa;
 
     /**
      * @var Desconto[]
      */
-    private $desconto = [];
+    private array $desconto = [];
+    private bool $pix = false;
+    private ?string $pixQrCode;
 
     /**
      * CaixaService constructor.
-     * @param string $vencimento
-     * @param string $valor
-     * @param string $nossonumero
-     * @param string $convenio
-     * @param Pagador $pagador
+     * @param DateTime|null $vencimento
+     * @param float|null $valor
+     * @param string|null $nossonumero
+     * @param string|null $convenio
+     * @param Pagador|null $pagador
      */
-    public function __construct(\DateTime $vencimento = null, $valor = null, $nossonumero = null, $convenio = null, Pagador $pagador = null)
+    public function __construct(DateTime $vencimento = null, float $valor = null, string $nossonumero = null, string $convenio = null, Pagador $pagador = null)
     {
-        $this->emissao = new \DateTime();
+        $this->emissao = new DateTime();
         $this->vencimento = $vencimento;
         $this->valor = $valor;
         $this->nossonumero = $nossonumero;
@@ -81,20 +64,20 @@ class CaixaService implements InterfaceBank
     }
 
     /**
-     * @param \DateTime $date
+     * @param DateTime $date
      * @return CaixaService
      */
-    public function setEmissao(\DateTime $date)
+    public function setEmissao(DateTime $date): CaixaService
     {
         $this->emissao = $date;
         return $this;
     }
 
     /**
-     * @param \DateTime $date
+     * @param DateTime $date
      * @return CaixaService
      */
-    public function setVencimento(\DateTime $date)
+    public function setVencimento(DateTime $date): CaixaService
     {
         $this->vencimento = $date;
         return $this;
@@ -104,17 +87,17 @@ class CaixaService implements InterfaceBank
      * @param double $valor
      * @return CaixaService
      */
-    public function setValor($valor)
+    public function setValor(float $valor): CaixaService
     {
         $this->valor = $valor;
         return $this;
     }
 
     /**
-     * @param int $nossonumero
+     * @param string|int $nossonumero
      * @return CaixaService
      */
-    public function setNossoNumero($nossonumero)
+    public function setNossoNumero(string|int $nossonumero): CaixaService
     {
         $this->nossonumero = $nossonumero;
         return $this;
@@ -124,7 +107,7 @@ class CaixaService implements InterfaceBank
      * @param int $convenio
      * @return CaixaService
      */
-    public function setConvenio($convenio)
+    public function setConvenio($convenio): CaixaService
     {
         $this->convenio = $convenio;
         return $this;
@@ -132,20 +115,20 @@ class CaixaService implements InterfaceBank
 
 
     /**
-     * @param Pagador $pagador
+     * @param Pagador|null $pagador
      * @return CaixaService
      */
-    public function setPagador(Pagador $pagador = null)
+    public function setPagador(Pagador $pagador = null): CaixaService
     {
         $this->pagador = $pagador;
         return $this;
     }
 
     /**
-     * @param Beneficiario $pagador
+     * @param Beneficiario|null $beneficiario
      * @return CaixaService
      */
-    public function setBeneficiario(Beneficiario $beneficiario = null)
+    public function setBeneficiario(Beneficiario $beneficiario = null): CaixaService
     {
         $this->beneficiario = $beneficiario;
         return $this;
@@ -154,7 +137,7 @@ class CaixaService implements InterfaceBank
     /**
      * @param string $codigobarras
      */
-    private function setCodigobarras($codigobarras)
+    private function setCodigobarras(string $codigobarras): void
     {
         $this->codigobarras = $codigobarras;
     }
@@ -162,15 +145,15 @@ class CaixaService implements InterfaceBank
     /**
      * @param string $linhadigitavel
      */
-    private function setLinhadigitavel($linhadigitavel)
+    private function setLinhadigitavel(string $linhadigitavel): void
     {
         $this->linhadigitavel = $linhadigitavel;
     }
 
     /**
-     * @param \DateTime
+     * @param DateTime
      */
-    public function getEmissao()
+    public function getEmissao(): DateTime
     {
         if (is_null($this->emissao)) {
             throw new \InvalidArgumentException('Data Emissäo inválido.');
@@ -179,9 +162,9 @@ class CaixaService implements InterfaceBank
     }
 
     /**
-     * @param \DateTime
+     * @return DateTime
      */
-    public function getVencimento()
+    public function getVencimento(): DateTime
     {
         if (is_null($this->vencimento)) {
             throw new \InvalidArgumentException('Data Vencimento inválido.');
@@ -192,29 +175,26 @@ class CaixaService implements InterfaceBank
     /**
      * @return int
      */
-    public function getCarteira()
+    public function getCarteira(): int
     {
-        if (is_null($this->carteira)) {
-            throw new \InvalidArgumentException('Carteira inválido.');
-        }
         return $this->carteira;
     }
 
     /**
      * @return double
      */
-    public function getValor()
+    public function getValor(): float
     {
         if (is_null($this->valor)) {
             throw new \InvalidArgumentException('Valor inválido.');
         }
-        return Helper::numberFormat($this->valor);
+        return $this->valor;
     }
 
     /**
      * @return string
      */
-    public function getNossoNumero()
+    public function getNossoNumero(): string
     {
         if (is_null($this->nossonumero)) {
             throw new \InvalidArgumentException('Nosso Numero inválido.');
@@ -225,7 +205,7 @@ class CaixaService implements InterfaceBank
     /**
      * @return string
      */
-    public function getLinhaDigitavel()
+    public function getLinhaDigitavel(): string
     {
         return $this->linhadigitavel;
     }
@@ -233,7 +213,7 @@ class CaixaService implements InterfaceBank
     /**
      * @return string
      */
-    public function getCodigoBarras()
+    public function getCodigoBarras(): string
     {
         return $this->codigobarras;
     }
@@ -241,7 +221,7 @@ class CaixaService implements InterfaceBank
     /**
      * @return string
      */
-    private function getConvenio()
+    private function getConvenio(): string
     {
         if (is_null($this->convenio)) {
             throw new \InvalidArgumentException('Convênio inválido.');
@@ -299,14 +279,14 @@ class CaixaService implements InterfaceBank
      */
     public function setDesconto(Desconto $desconto): CaixaService
     {
-        array_push($this->desconto, $desconto);
+        $this->desconto[] = $desconto;
         return $this;
     }
 
     /**
      * @return int
      */
-    public function getPrazoDevolucao()
+    public function getPrazoDevolucao(): int
     {
         return $this->prazodevolucao;
     }
@@ -315,26 +295,65 @@ class CaixaService implements InterfaceBank
      * @param mixed $prazodevolucao
      * @return CaixaService
      */
-    public function setPrazoDevolucao(int $prazodevolucao)
+    public function setPrazoDevolucao(int $prazodevolucao): CaixaService
     {
         $this->prazodevolucao = $prazodevolucao;
         return $this;
     }
 
-    public function send()
+    /**
+     * @return string|null
+     */
+    public function getPixQrCode(): ?string
+    {
+        return $this->pixQrCode;
+    }
+
+    /**
+     * @param string|null $pixQrCode
+     * @return CaixaService
+     */
+    public function setPixQrCode(?string $pixQrCode): CaixaService
+    {
+        $this->pixQrCode = $pixQrCode;
+        return $this;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getGerarPix(): bool
+    {
+        return $this->pix;
+    }
+
+    /**
+     * @param boolean $pix
+     * @return CaixaService
+     */
+    public function setGerarPix(bool $pix): CaixaService
+    {
+        $this->pix = $pix;
+        return $this;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function send(): void
     {
 
         try {
 
-            $client = new CaixaSoapCliente(dirname(__FILE__) . '/../XSD/Caixa/RegistroCobrancaService.wsdl');
-            $client->__setLocation('https://barramento.caixa.gov.br/sibar/ManutencaoCobrancaBancaria/Boleto/Externo');
+            $client = new CaixaSoapCliente('https://barramento.caixa.gov.br/sibar/ManutencaoCobrancaBancaria/Boleto/Externo?wsdl');
+            //$client->__setLocation('https://barramento.caixa.gov.br/sibar/ManutencaoCobrancaBancaria/Boleto/Externo');
 
-            $now = new \DateTime();
+            $now = new DateTime();
 
-            $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><SERVICO_ENTRADA/>');
+            $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><SERVICO_ENTRADA/>');
 
             $header = $xml->addChild('HEADER');
-            $header->addChild('VERSAO', '1.0');
+            $header->addChild('VERSAO', '3.2');
             $header->addChild('AUTENTICACAO', $this->getHash());
             $header->addChild('USUARIO_SERVICO', 'SGCBS02P');
             $header->addChild('OPERACAO', 'INCLUI_BOLETO');
@@ -346,6 +365,10 @@ class CaixaService implements InterfaceBank
             $incluir->addChild('CODIGO_BENEFICIARIO', $this->getConvenio());
 
             $titulo = $incluir->addChild('TITULO');
+            if($this->getGerarPix()) {
+                $titulo->addChild('TIPO', 'HIBRIDO');
+            }
+
             $titulo->addChild('NOSSO_NUMERO', '14' . Helper::padLeft($this->getNossoNumero(), 15));
             $titulo->addChild('NUMERO_DOCUMENTO', substr($this->getNossoNumero(), -11));
             $titulo->addChild('DATA_VENCIMENTO', $this->getVencimento()->format('Y-m-d'));
@@ -354,7 +377,7 @@ class CaixaService implements InterfaceBank
             $titulo->addChild('FLAG_ACEITE', 'N');
             $titulo->addChild('DATA_EMISSAO', $this->getEmissao()->format('Y-m-d'));
 
-            if (!is_null($this->multa)) {
+            if (!empty($this->multa)) {
                 $multa = $titulo->addChild('MULTA');
                 $multa->addChild('DATA', $this->multa->getData()->format('Y-m-d'));
                 $multa->addChild('PERCENTUAL', $this->multa->getPercentual());
@@ -380,8 +403,8 @@ class CaixaService implements InterfaceBank
                 }
             }
 
-            if (!is_null($this->juros)) {
-                $juros = $titulo->addChild('JUROS_MORA');
+            $juros = $titulo->addChild('JUROS_MORA');
+            if (!empty($this->juros)) {
                 if ($this->juros->getTipo() === $this->juros::Diario) {
                     $juros->addChild('TIPO', 'VALOR_POR_DIA');
                     $juros->addChild('DATA', $this->juros->getData()->format('Y-m-d'));
@@ -398,7 +421,6 @@ class CaixaService implements InterfaceBank
                     throw new \InvalidArgumentException('Código do tipo de juros inválido.');
                 }
             } else {
-                $juros = $titulo->addChild('JUROS_MORA');
                 $juros->addChild('TIPO', 'ISENTO');
                 $juros->addChild('VALOR', 0);
                 $juros->addChild('PERCENTUAL', 0);
@@ -455,37 +477,159 @@ class CaixaService implements InterfaceBank
 
             $this->setCodigobarras($result->DADOS->INCLUI_BOLETO->CODIGO_BARRAS);
             $this->setLinhadigitavel($result->DADOS->INCLUI_BOLETO->LINHA_DIGITAVEL);
+            $this->setPixQrCode($result->DADOS->INCLUI_BOLETO->QRCODE ?? null);
 
         } catch (\SoapFault $sf) {
-            throw new \Exception($sf->faultstring, 500);
-        } catch (\Exception $e) {
-            throw new \Exception($e->getMessage(), 500, $e);
+            throw new Exception($sf->faultstring, 500);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage(), 500, $e);
         }
 
     }
 
-    private function getHash()
+    /**
+     * @throws Exception
+     */
+    public function alterar(): void
+    {
+
+        try {
+
+            $client = new CaixaSoapCliente('https://barramento.caixa.gov.br/sibar/ManutencaoCobrancaBancaria/Boleto/Externo?wsdl');
+            $now = new DateTime();
+
+            $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><SERVICO_ENTRADA/>');
+
+            $header = $xml->addChild('HEADER');
+            $header->addChild('VERSAO', '3.2');
+            $header->addChild('AUTENTICACAO', $this->getHash('ALTERA_BOLETO'));
+            $header->addChild('USUARIO_SERVICO', 'SGCBS02P');
+            $header->addChild('OPERACAO', 'ALTERA_BOLETO');
+            $header->addChild('SISTEMA_ORIGEM', 'SIGCB');
+            $header->addChild('DATA_HORA', $now->format('YmdHis'));
+
+            $dados = $xml->addChild('DADOS');
+            $alterar = $dados->addChild('ALTERA_BOLETO');
+            $alterar->addChild('CODIGO_BENEFICIARIO', $this->getConvenio());
+
+            $titulo = $alterar->addChild('TITULO');
+            $titulo->addChild('NOSSO_NUMERO', '14' . Helper::padLeft($this->getNossoNumero(), 15));
+            $titulo->addChild('NUMERO_DOCUMENTO', substr($this->getNossoNumero(), -11));
+            $titulo->addChild('DATA_VENCIMENTO', $this->getVencimento()->format('Y-m-d'));
+            $titulo->addChild('VALOR', $this->getValor());
+
+
+            $arr = json_decode(json_encode((array)$xml), 1);
+
+            //file_put_contents('C:/home/tmp/' . $this->getNossoNumero() . '.txt', print_r($arr, true));
+
+            $result = $client->__soapCall("ALTERA_BOLETO", [$arr]);
+
+            if (!isset($result->DADOS->CONTROLE_NEGOCIAL)) {
+                throw new InvalidArgumentException($result->COD_RETORNO, trim($result->RETORNO));
+            }
+
+            if ($result->DADOS->CONTROLE_NEGOCIAL->COD_RETORNO !== "0") {
+                if (preg_match('/\((.*?)\)/i', $result->DADOS->CONTROLE_NEGOCIAL->MENSAGENS->RETORNO, $match)) {
+                    $codigo = trim($match[1]);
+                } else {
+                    $checksum = crc32(trim($result->DADOS->CONTROLE_NEGOCIAL->MENSAGENS->RETORNO));
+                    $codigo = sprintf("%u\n", $checksum);
+                }
+                throw new InvalidArgumentException($codigo, $result->DADOS->CONTROLE_NEGOCIAL->MENSAGENS->RETORNO);
+            }
+
+            $this->setCodigobarras($result->DADOS->ALTERA_BOLETO->CODIGO_BARRAS);
+            $this->setLinhadigitavel($result->DADOS->ALTERA_BOLETO->LINHA_DIGITAVEL);
+            $this->setPixQrCode($result->DADOS->ALTERA_BOLETO->QRCODE ?? null);
+
+        } catch (\SoapFault $sf) {
+            throw new Exception($sf->faultstring, 500);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage(), 500, $e);
+        }
+
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function baixar(): void
+    {
+
+        try {
+
+            $client = new CaixaSoapCliente('https://barramento.caixa.gov.br/sibar/ManutencaoCobrancaBancaria/Boleto/Externo?wsdl');
+
+            $now = new DateTime();
+
+            $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><SERVICO_ENTRADA/>');
+
+            $header = $xml->addChild('HEADER');
+            $header->addChild('VERSAO', '3.2');
+            $header->addChild('AUTENTICACAO', $this->getHash('BAIXA_BOLETO'));
+            $header->addChild('USUARIO_SERVICO', 'SGCBS02P');
+            $header->addChild('OPERACAO', 'BAIXA_BOLETO');
+            $header->addChild('SISTEMA_ORIGEM', 'SIGCB');
+            $header->addChild('DATA_HORA', $now->format('YmdHis'));
+
+            $dados = $xml->addChild('DADOS');
+            $alterar = $dados->addChild('BAIXA_BOLETO');
+            $alterar->addChild('CODIGO_BENEFICIARIO', $this->getConvenio());
+            $alterar->addChild('NOSSO_NUMERO', '14' . Helper::padLeft($this->getNossoNumero(), 15));
+
+            $arr = json_decode(json_encode((array)$xml), 1);
+
+            //file_put_contents('C:/home/tmp/' . $this->getNossoNumero() . '.txt', print_r($arr, true));
+
+            $result = $client->__soapCall("BAIXA_BOLETO", [$arr]);
+
+            if (!isset($result->DADOS->CONTROLE_NEGOCIAL)) {
+                throw new InvalidArgumentException($result->COD_RETORNO, trim($result->RETORNO));
+            }
+
+            if ($result->DADOS->CONTROLE_NEGOCIAL->COD_RETORNO !== "0") {
+                if (preg_match('/\((.*?)\)/i', $result->DADOS->CONTROLE_NEGOCIAL->MENSAGENS->RETORNO, $match)) {
+                    $codigo = trim($match[1]);
+                } else {
+                    $checksum = crc32(trim($result->DADOS->CONTROLE_NEGOCIAL->MENSAGENS->RETORNO));
+                    $codigo = sprintf("%u\n", $checksum);
+                }
+                throw new InvalidArgumentException($codigo, $result->DADOS->CONTROLE_NEGOCIAL->MENSAGENS->RETORNO);
+            }
+
+        } catch (\SoapFault $sf) {
+            throw new Exception($sf->faultstring, 500);
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage(), 500, $e);
+        }
+
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function getHash($operacao = 'INCLUIR_BOLETO'): string
     {
         try {
+            if($operacao === 'BAIXA_BOLETO') {
+                $strVencimento = '0';
+                $strValor = 0;
+            } else {
+                $strVencimento = $this->getVencimento()->format('dmY');
+                $strValor = Helper::number(Helper::numberFormat($this->getValor()));
+            }
 
             $str = Helper::padLeft($this->getConvenio(), 7)
                 . '14' . Helper::padLeft($this->getNossoNumero(), 15)
-                . $this->getVencimento()->format('dmY')
-                . Helper::padLeft($this->getValor(), 15)
+                . Helper::padLeft($strVencimento, 8)
+                . Helper::padLeft($strValor, 15)
                 . Helper::padLeft($this->beneficiario->getDocumento(), 14);
 
             return base64_encode(hash('sha256', $str, true));
 
-        } catch (\Exception $e) {
-            throw new \Exception($e->getMessage(), $e->getCode());
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage(), $e->getCode());
         }
-    }
-    
-    /**
-     * @return string|null
-     */
-    public function getPixQrCode(): ?string
-    {
-        return null;
     }
 }
