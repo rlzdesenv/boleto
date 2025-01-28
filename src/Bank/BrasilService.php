@@ -27,8 +27,8 @@ use SoapFault;
 class BrasilService implements InterfaceBank
 {
 
-    private ?DateTime $emissao;
-    private ?DateTime $vencimento;
+    private DateTime $emissao;
+    private DateTime $vencimento;
     private float $valor;
     private string $convenio;
     private string $variacaocarteira;
@@ -74,15 +74,33 @@ class BrasilService implements InterfaceBank
         $this->cache = new ApcuCachePool();
 
         $this->emissao = new Datetime();
-        $this->vencimento = $vencimento;
-        $this->valor = $valor;
-        $this->nossonumero = $nossonumero;
-        $this->carteira = $carteira;
-        $this->convenio = $convenio;
-        $this->variacaocarteira = $variacaocarteira;
-        $this->pagador = $pagador;
-        $this->clientId = $clientId;
-        $this->secretId = $secretId;
+        if (!empty($vencimento)) {
+            $this->vencimento = $vencimento;
+        }
+        if (!empty($valor)) {
+            $this->valor = $valor;
+        }
+        if (!empty($nossonumero)) {
+            $this->nossonumero = $nossonumero;
+        }
+        if (!empty($carteira)) {
+            $this->carteira = $carteira;
+        }
+        if (!empty($convenio)) {
+            $this->convenio = $convenio;
+        }
+        if (!empty($variacaocarteira)) {
+            $this->variacaocarteira = $variacaocarteira;
+        }
+        if (!empty($pagador)) {
+            $this->pagador = $pagador;
+        }
+        if (!empty($clientId)) {
+            $this->clientId = $clientId;
+        }
+        if (!empty($secretId)) {
+            $this->secretId = $secretId;
+        }
     }
 
     /**
