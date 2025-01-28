@@ -32,7 +32,7 @@ class CaixaSoapCliente extends \SoapClient
                 'exceptions' => TRUE,
                 'encoding' => 'UTF-8',
                 'compression' => \SOAP_COMPRESSION_ACCEPT | \SOAP_COMPRESSION_GZIP,
-                'cache_wsdl' => WSDL_CACHE_NONE,
+                'cache_wsdl' => WSDL_CACHE_BOTH,
                 'connection_timeout' => 15,
                 'stream_context' => $context,
                 'use' => \SOAP_LITERAL
@@ -42,7 +42,7 @@ class CaixaSoapCliente extends \SoapClient
         parent::__construct($wsdl, $options);
     }
 
-    function __doRequest($request, $location, $action, $version, $one_way = 0)
+    function __doRequest($request, $location, $action, $version, $one_way = 0): ?string
     {
         $request = str_replace('xmlns:ns1="http://caixa.gov.br/sibar/manutencao_cobranca_bancaria/boleto/externo"', 'xmlns:ns1="http://caixa.gov.br/sibar/manutencao_cobranca_bancaria/boleto/externo" xmlns:sib="http://caixa.gov.br/sibar"', $request);
 
