@@ -69,7 +69,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
      */
     public function __construct(DateTime $vencimento = null, $valor = null, $nossonumero = null, $agencia = null, $conta = null, Pagador $pagador = null, Beneficiario $beneficiario = null, Certificado $certificado = null, $clientId = null)
     {
-        $this->cache = new ApcuCachePool();
+        $this->cache = \Boleto\Factory\CacheFactory::getCache();
 
         $this->vencimento = $vencimento;
         $this->valor = $valor;
@@ -458,6 +458,10 @@ class BradescoService extends AbstractBank implements InterfaceBank
 
         try {
 
+			if((string)$this->getNossoNumero() === '0') {
+				throw new \Boleto\Exception\InvalidArgumentException(99999, 'Nosso Numero Invalido', 400);
+			}
+
             $arr = new stdClass();
             $arr->ctitloCobrCdent = (string)$this->getNossoNumero(); // Nosso Número
             $arr->ctitloCliCdent = $this->getNossoNumero(); // Identificador do título pelo beneficiário (Seu Número)
@@ -597,12 +601,14 @@ class BradescoService extends AbstractBank implements InterfaceBank
                 $endpoint = 'https://openapi.bradesco.com.br';
             }
 
+            //$client = \Boleto\Factory\ClientFactory::getClient($endpoint);
             $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
 
             $res = $client->request('POST', '/v1/boleto-hibrido/registrar-boleto', [
                 'headers' => $headers,
                 'json' => $arr
             ]);
+
 
             if ($res->getStatusCode() === 200) {
 
@@ -624,8 +630,12 @@ class BradescoService extends AbstractBank implements InterfaceBank
                     $code = $this->getErrorCode($error->errorMessage) ?: crc32(trim($error->errorMessage));
                     throw new \Boleto\Exception\InvalidArgumentException($code, $error->errorMessage, $e->getCode());
                 }
-                throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
+                //throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
             }
+            if($e->getCode() === 401){
+                throw new \Boleto\Exception\InvalidArgumentException(-100, 'Token inválido', $e->getCode());
+            }
+            //file_put_contents( ROOT_PATH . '/tmp/bradesco/-'.$this->getNossoNumero().'-response-errorrrr-xxxxx.json', $e->getMessage());
             throw new Exception($e->getMessage());
         }
     }
@@ -672,7 +682,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
                     $arr = json_decode($json);
                     //$arr->iat = $time;
                     $item->set($arr->access_token);
-                    $item->expiresAfter($time + $arr->expires_in);
+                    $item->expiresAfter($arr->expires_in);
                     $this->cache->saveDeferred($item);
                     return $item->get();
                 }
