@@ -483,7 +483,7 @@ class BrasilService implements InterfaceBank
      * @throws GuzzleException
      * @throws Exception
      */
-    private function send(): void
+    public function send(): void
     {
         try {
             $boleto = new \stdClass();
