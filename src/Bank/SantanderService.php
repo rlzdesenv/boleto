@@ -39,7 +39,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
     private ?string $nossonumero;
     private string $codigobarras;
     private string $linhadigitavel;
-    private string $pixqrcode;
+    private ?string $pixqrcode;
     private int $prazodevolucao = 0;
     private bool $pix = false;
     private ?Pagador $pagador;
@@ -74,7 +74,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
      */
     public function __construct(DateTime $vencimento = null, $valor = null, $nossonumero = null, $agencia = null, $conta = null, $convenio = null, Pagador $pagador = null, Beneficiario $beneficiario = null, Certificado $certificado = null, $clientId = null, $secretId = null)
     {
-        $this->cache = new ApcuCachePool();
+        $this->cache = \Boleto\Factory\CacheFactory::getCache();
 
         $this->vencimento = $vencimento;
         $this->valor = $valor;
@@ -545,8 +545,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
             $arr->issueDate = $this->getEmissao()->format('Y-m-d');
             $arr->nominalValue = number_format($this->getValor(), 2, '.', '');;
             $arr->bankNumber = $this->getNossoNumero();
-            $arr->documentKind = "DUPLICATA_MERCANTIL";
-            // $arr->deductionValue = 0;
+
             $arr->paymentType = "REGISTRO";
             $arr->writeOffQuantityDays = $this->getPrazoDevolucao();
 
@@ -632,7 +631,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 $multa = $this->multa;
                 $interval_multa = date_diff($this->getVencimento(), $multa->getData());
                 $arr->finePercentage = number_format($multa->getPercentual(), 2, '.', ''); // Percentual de multa após vencimento
-                $arr->fineQuantityDays = max(1, $interval_multa->format('%a')); // Quantidade de dias após o vencimento, para incidência de multa
+                $arr->fineQuantityDays = max(0, $interval_multa->format('%a')); // Quantidade de dias após o vencimento, para incidência de multa
             }
 
 
@@ -663,6 +662,40 @@ class SantanderService extends AbstractBank implements InterfaceBank
                     throw new InvalidArgumentException('Código do tipo de juros inválido.');
                 }
 
+            }
+
+            $arr->documentKind = "DUPLICATA_MERCANTIL";
+
+            // Se o beneficiário for igual ao pagador, então é um boleto de depósito de aporte, para isso, não pode ter multa, juros e desconto, somente um desconto, normativa 157158 e 157164
+            if($this->beneficiario->getDocumento() === $this->pagador->getDocumento()) {
+                throw new \Boleto\Exception\InvalidArgumentException(490, 'Cnpj raiz do pagador nao pode ser igual ao do beneficiario final - usar bda', 400);
+
+                $arr->documentKind = "BOLETO_DEPOSITO_APORTE";
+
+                // Como não pode ter multa, juros e desconto, então não pode pagar após o vencimento
+                $arr->writeOffQuantityDays = 0;
+
+                // Remove multa, juros e desconto
+                unset($arr->finePercentage);
+                unset($arr->fineQuantityDays);
+                unset($arr->interestPercentage);
+                unset($arr->discount);
+
+                if (count($this->desconto) > 0) {
+                    if (count($this->desconto) > 3) {
+                        throw new InvalidArgumentException('Quantidade desconto informado maior que 3.');
+                    }
+                    foreach ($this->desconto as $desconto) {
+                        if ($desconto->getTipo() !== $desconto::Valor) {
+                            throw new InvalidArgumentException('Tipo de desconto inválido.');
+                        }
+                        // Se a data do Desconto for igual ao Vencimento, então é um desconto único
+                        if($desconto->getData()->format('Y-m-d') === $this->getVencimento()->format('Y-m-d')) {
+                            $arr->deductionValue = number_format($desconto->getValor(), 2, '.', '');
+                            break;
+                        }
+                    }
+                }
             }
 
             //$a = json_encode($arr, JSON_PRETTY_PRINT|JSON_PRESERVE_ZERO_FRACTION);
@@ -713,11 +746,9 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 }
 
                 if (isset($error->statusHttp)) {
-                    $code = $this->getErrorCode($error->errorMessage);
-                    throw new \Boleto\Exception\InvalidArgumentException($code, $error->errorMessage, $e->getCode());
+                    throw new \Boleto\Exception\InvalidArgumentException(null, $error->errorMessage, $e->getCode());
                 }
 
-                throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
             }
             throw new Exception($e->getMessage());
         }
@@ -775,6 +806,69 @@ class SantanderService extends AbstractBank implements InterfaceBank
         }
     }
 
+    /**
+     * @throws \Boleto\Exception\InvalidArgumentException
+     * @throws GuzzleException
+     * @throws Exception
+     */
+    public function consulta(): void
+    {
+        try {
+
+            $token = $this->getToken();
+
+            $headers = [
+                'Authorization' => "Bearer $token",
+                'X-Application-Key' => $this->getClientId()
+            ];
+
+            if ($this->isSandbox()) {
+                $endpoint = 'https://trust-sandbox.api.santander.com.br';
+            } else {
+                $endpoint = 'https://trust-open.api.santander.com.br';
+            }
+
+            $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
+
+            $arr = new stdClass();
+            $arr->covenantCode = $this->getNossoNumero();
+            $arr->bankNumber = $this->getNossoNumero();
+            $arr->operation = 'BAIXAR';
+
+            $res = $client->request('GET', '/collection_bill_management/v2/bills/'.$this->getConvenio().'.'.$this->getNossoNumero().'?tipoConsulta=bankslip', [
+                'headers' => $headers,
+                'cert' => $this->getCertificado()->getCertificateFilePem(),
+                'json' => $arr
+            ]);
+
+            if ($res->getStatusCode() === 200) {
+                $body = json_decode($res->getBody()->getContents());
+                $this->setCodigobarras($body->bankSlipData->barCode);
+                $this->setLinhadigitavel($body->bankSlipData->digitableLine);
+                $this->setPixQrCode(null);
+                if(isset($body->qrCodeData)) {
+                    $this->setPixQrCode($body->qrCodeData->qrCode);
+                }
+
+                $pagador = new Pagador($body->payerData->payerName, $body->payerData->payerDocumentNumber, $body->payerData->payerAddress, null, null, $body->payerData->payerNeighborhood, $body->payerData->payerCounty, $body->payerData->payerStateAbbreviation, $body->payerData->payerZipCode);
+
+                $this->setPagador($pagador);
+            }
+
+        } catch (RequestException $e) {
+            if ($e->hasResponse()) {
+                $error = json_decode($e->getResponse()->getBody()->getContents());
+                if (isset($error->statusHttp)) {
+                    $code = $this->getErrorCode($error->errorMessage);
+
+                    throw new \Boleto\Exception\InvalidArgumentException($code, $error->errorMessage, $e->getCode());
+                }
+                throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
+            }
+            throw new Exception($e->getMessage());
+        }
+    }
+
 
     private function getToken()
     {
@@ -782,8 +876,6 @@ class SantanderService extends AbstractBank implements InterfaceBank
             $key = sha1('boleto-santander' . $this->agencia . $this->getBeneficiario()->getDocumento());
             $item = $this->cache->getItem($key);
             if (!$item->isHit()) {
-
-                $time = time();
 
                 if ($this->isSandbox()) {
                     $endpoint = 'https://trust-sandbox.api.santander.com.br';
@@ -808,11 +900,13 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 ]);
 
 
+
+
                 if ($res->getStatusCode() === 200) {
                     $json = $res->getBody()->getContents();
                     $arr = json_decode($json);
                     $item->set($arr->access_token);
-                    $item->expiresAfter($time + $arr->expires_in);
+                    $item->expiresAfter($arr->expires_in);
                     $this->cache->saveDeferred($item);
                     return $item->get();
                 }
@@ -825,131 +919,6 @@ class SantanderService extends AbstractBank implements InterfaceBank
         }
     }
 
-    private function getErrorCode($errorMessage): ?int
-    {
-        $errors = [
-            -99 => 'Serviço indisponível no momento. Tente novamente mais tarde.',
-            -4 => 'Tamanho do campo inválido ',
-            -3 => 'Tipo do campo inválido',
-            -2 => 'Contrato não encontrado ',
-            -1 => 'Contrato não aprovado',
-            0 => 'Solicitação atendida ',
-            1 => 'Solicitação não encontrada',
-            2 => 'Erro Genérico - sistema indisponível',
-            5 => 'Inclusão efetuada',
-            6 => 'Dados inconsistentes',
-            10 => 'Erro Acesso Sub-rotina',
-            12 => 'Cliente/Negociação Bloqueado',
-            13 => 'Usuário não Autorizado',
-            14 => 'Espécie Título Inválida',
-            15 => 'Tipo/Número Inscrição Inválido',
-            16 => 'Informe todos os campos para decurso de Prazo',
-            17 => 'Nome do Pagador Especial não Informado',
-            18 => 'Endereço Inválido',
-            19 => 'CEP Inválido',
-            20 => 'Agência Depositária Inválida',
-            21 => 'Informe todos os campos para Instrução de Protesto',
-            22 => 'Banco Inválido',
-            23 => 'Seu Número Inválido',
-            24 => 'Informe todos os campos para Abatimento',
-            25 => 'Valor dos Juros maior que o Valor do Título',
-            26 => 'Data de Emissão maior que a Data de Vencimento',
-            27 => 'Documento do Sacador Avalista Inválido',
-            28 => 'Informe todos os campos para Desconto',
-            29 => 'Informe todos os campos para Sacador Avalista',
-            30 => 'Data Vencimento menor ou igual Data Emissão',
-            31 => 'Data Desconto menor ou igual Data Emissão',
-            32 => 'Data Desconto maior que Data Vencimento',
-            33 => 'Valor Desconto/Bonificação maior ou igual Valor Título',
-            34 => 'Tipo informado deve ser 1, 2 ou 3',
-            35 => 'Valor Abatimento maior que o Valor do Título',
-            36 => 'CEP Inválido',
-            37 => 'Data Emissão Inválida',
-            38 => 'Data Vencimento Inválida',
-            39 => 'Percentual informado maior ou igual 100,00',
-            40 => 'Número CGC/CPF inválido',
-            41 => 'Protesto Automático x Decurso de Prazo Incompatível',
-            42 => 'Banco/Agência Depositária Inválido',
-            43 => 'Espécie de Documento inválido',
-            44 => 'Informe 1-Contra-apresentação ou 2-À vista',
-            45 => 'Código da instrução de protesto inválido',
-            46 => 'Dias para instrução de protesto inválido',
-            47 => 'Código para desconto inválido',
-            48 => 'Código para multa inválido',
-            49 => 'Código para comissão permanência dia inválido',
-            50 => 'Espécie Documento exige CGC para Sacador Avalista',
-            51 => 'CEP e/ou Banco/Agência Depositária Inválido',
-            52 => 'Data Emissão maior ou igual Data Vencimento',
-            53 => 'Data Desconto Inválida',
-            54 => 'Data emissão maior Data Registro',
-            55 => 'Percentual multa informado maior que o permitido',
-            56 => 'Percentual comissão permanência informado maior que o permitido',
-            57 => 'Percentual Bonificação informado maior que o permitido',
-            58 => 'Prazo para Protesto inválido 59 Informe a data ou tipo do vencimento',
-            60 => 'Valor do IOF não permitido para produtos 05,15,43 ou 44',
-            61 => 'Abatimento já cadastrado para o título',
-            62 => 'Abatimento não',
-            65 => 'Negociação inexistente',
-            66 => 'Cliente inexistente ',
-            67 => 'CNPJ/CPF inválido',
-            68 => 'N. Número não pode ser informado quando status 4',
-            69 => 'Título já cadastrado',
-            70 => 'Data e tipo de vencimento incompatíveis',
-            71 => 'Data de vencimento não pode ser posterior a 10 anos',
-            72 => 'Dias para instrução inferior ao padrão',
-            73 => 'Dias para instrução antecipa data de protesto',
-            74 => 'Valor IOF obrigatório',
-            75 => 'Valor IOF incompatível com Id produto',
-            76 => 'Tipo de abatimento inválido',
-            77 => 'Status Inválido',
-            78 => 'Registro on-line não permite Banco diferente de 237',
-            79 => 'Carta para protesto não recebida',
-            80 => 'Tipo de vencimento inválido',
-            81 => 'Valor acumulado desconto/bonificação maior ou igual valor título',
-            82 => 'Datas desconto/bonificação fora de sequência',
-            83 => 'Informe todos os campos para multa',
-            84 => 'Código comissão permanência inválido',
-            85 => 'Informe todos os campos para comissão permanência',
-            86 => 'Registro duplicado na tabela de ocorrências',
-            87 => 'Solicitação de protesto já existente',
-            88 => 'Registro duplicado na base de atualização sequencial',
-            89 => 'Sacador avalista já cadastrado',
-            90 => 'Indicador CIP inexistente',
-            91 => 'Moeda negociada inexistente',
-            92 => 'Banco/Agência operadora inexistente',
-            93 => 'Acessório escritural negociado inexistente',
-            94 => 'Polo de serviço inexistente para Banco/Agência',
-            95 => 'Banco/Agência centralizadora não cadastrada para Banco/Agência depositária',
-            96 => 'Título não encontrado pelo módulo CBON8230',
-            97 => 'Valor IOF maior ou igual valor título',
-            98 => 'Data Inválida',
-            99 => 'Id Prod/Cta não cadastrados'
-        ];
-
-        $name = $this->normalizeString($errorMessage); // Normaliza a string de entrada
-        $bestMatchId = null;
-        $highestSimilarity = 0;
-
-        foreach ($errors as $id => $errorMessage) {
-            $normalizedMessage = $this->normalizeString($errorMessage);
-
-            // Verifica se o nome corresponde exatamente
-            if (strcasecmp($normalizedMessage, $name) === 0) {
-                return $id;
-            }
-
-            // Verifica a semelhança entre as strings
-            similar_text($normalizedMessage, $name, $percent);
-            if ($percent > $highestSimilarity) {
-                $highestSimilarity = $percent;
-                $bestMatchId = $id;
-            }
-        }
-
-        // Retorna o ID da melhor correspondência (ou null se nenhuma foi encontrada)
-        return $highestSimilarity > 70 ? $bestMatchId : null;
-
-    }
 
     private function normalizeString($string): array|string|null
     {
