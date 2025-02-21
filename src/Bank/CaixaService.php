@@ -444,11 +444,36 @@ class CaixaService implements InterfaceBank
             }
 
             $endereco = $pagador->addChild('ENDERECO');
-            $endereco->addChild('LOGRADOURO', substr(str_replace("&", "", Helper::ascii($this->pagador->getLogradouro())) . ' ' . $this->pagador->getNumero(), 0, 40));
-            $endereco->addChild('BAIRRO', substr(str_replace("&", "", Helper::ascii($this->pagador->getBairro())), 0, 15));
-            $endereco->addChild('CIDADE', substr(str_replace("&", "", Helper::ascii($this->pagador->getCidade())), 0, 15));
-            $endereco->addChild('UF', Helper::ascii($this->pagador->getUf()));
-            $endereco->addChild('CEP', Helper::number($this->pagador->getCep()));
+
+            if(!empty($this->pagador->getLogradouro())) {
+                $endereco->addChild('LOGRADOURO', substr(str_replace("&", "", Helper::ascii($this->pagador->getLogradouro())) . ' ' . $this->pagador->getNumero(), 0, 40));
+            } else {
+                throw new InvalidArgumentException('X997', '(X997) LOGRADOURO DO PAGADOR INVALIDO');
+            }
+
+            if(!empty($this->pagador->getBairro())) {
+                $endereco->addChild('BAIRRO', substr(str_replace("&", "", Helper::ascii($this->pagador->getBairro())), 0, 15));
+            } else {
+                throw new InvalidArgumentException('X999', '(X999) BAIRRO DO PAGADOR INVALIDO');
+            }
+
+            if(!empty($this->pagador->getCidade())) {
+                $endereco->addChild('CIDADE', substr(str_replace("&", "", Helper::ascii($this->pagador->getCidade())), 0, 15));
+            } else {
+                throw new InvalidArgumentException('X998', '(X998) CIDADE DO PAGADOR INVALIDO');
+            }
+
+            if(!empty($this->pagador->getUf())) {
+                $endereco->addChild('UF', Helper::ascii($this->pagador->getUf()));
+            } else {
+                throw new InvalidArgumentException('X996', '(X996) UF DO PAGADOR INVALIDO');
+            }
+
+            if(!empty($this->pagador->getCep())) {
+                $endereco->addChild('CEP', Helper::number($this->pagador->getCep()));
+            } else {
+                throw new InvalidArgumentException('X995', '(X995) CEP DO PAGADOR INVALIDO');
+            }
 
             $arr = json_decode(json_encode((array)$xml), 1);
 
