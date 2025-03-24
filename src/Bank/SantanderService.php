@@ -778,7 +778,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
             $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
 
             $arr = new stdClass();
-            $arr->covenantCode = $this->getNossoNumero();
+            $arr->covenantCode = $this->getConvenio();
             $arr->bankNumber = $this->getNossoNumero();
             $arr->operation = 'BAIXAR';
 
@@ -831,7 +831,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
             $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
 
             $arr = new stdClass();
-            $arr->covenantCode = $this->getNossoNumero();
+            $arr->covenantCode = $this->getConvenio();
             $arr->bankNumber = $this->getNossoNumero();
             $arr->operation = 'BAIXAR';
 
