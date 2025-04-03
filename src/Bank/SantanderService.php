@@ -61,6 +61,8 @@ class SantanderService extends AbstractBank implements InterfaceBank
 
     private ?string $chavePix = null;
 
+    private ?float $transferTime = null;
+
     /**
      * SantanderService constructor.
      * @param DateTime|null $vencimento
@@ -714,12 +716,15 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 $endpoint = 'https://trust-open.api.santander.com.br';
             }
 
-            $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
+            $client = new Client(['base_uri' => $endpoint, 'verify' => false, 'timeout' => 10]);
 
             $res = $client->request('POST', '/collection_bill_management/v2/workspaces/' . $this->getWorkspaceId() . '/bank_slips', [
                 'headers' => $headers,
                 'cert' => $this->getCertificado()->getCertificateFilePem(),
-                'json' => $arr
+                'json' => $arr,
+                'on_stats' => function (\GuzzleHttp\TransferStats $stats) {
+                    $this->transferTime = $stats->getTransferTime();
+                }
             ]);
 
             if ($res->getStatusCode() === 201) {
@@ -775,7 +780,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 $endpoint = 'https://trust-open.api.santander.com.br';
             }
 
-            $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
+            $client = new Client(['base_uri' => $endpoint, 'verify' => false, 'timeout' => 10]);
 
             $arr = new stdClass();
             $arr->covenantCode = $this->getConvenio();
@@ -795,12 +800,15 @@ class SantanderService extends AbstractBank implements InterfaceBank
         } catch (RequestException $e) {
             if ($e->hasResponse()) {
                 $error = json_decode($e->getResponse()->getBody()->getContents());
-                if (isset($error->statusHttp)) {
-                    $code = $this->getErrorCode($error->errorMessage);
-
-                    throw new \Boleto\Exception\InvalidArgumentException($code, $error->errorMessage, $e->getCode());
+                if (!empty($error->_errors) && is_array($error->_errors)) {
+                    foreach ($error->_errors as $err) {
+                        throw new \Boleto\Exception\InvalidArgumentException($err->_code, $err->_message, $e->getCode());
+                    }
                 }
-                throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
+                if (isset($error->_message)) {
+                    throw new \Boleto\Exception\InvalidArgumentException($error->_errorCode, $error->_message, $e->getCode());
+                }
+
             }
             throw new Exception($e->getMessage());
         }
@@ -828,7 +836,7 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 $endpoint = 'https://trust-open.api.santander.com.br';
             }
 
-            $client = new Client(['base_uri' => $endpoint, 'verify' => false]);
+            $client = new Client(['base_uri' => $endpoint, 'verify' => false, 'timeout' => 10]);
 
             $arr = new stdClass();
             $arr->covenantCode = $this->getConvenio();
@@ -858,12 +866,14 @@ class SantanderService extends AbstractBank implements InterfaceBank
         } catch (RequestException $e) {
             if ($e->hasResponse()) {
                 $error = json_decode($e->getResponse()->getBody()->getContents());
-                if (isset($error->statusHttp)) {
-                    $code = $this->getErrorCode($error->errorMessage);
-
-                    throw new \Boleto\Exception\InvalidArgumentException($code, $error->errorMessage, $e->getCode());
+                if (!empty($error->_errors) && is_array($error->_errors)) {
+                    foreach ($error->_errors as $err) {
+                        throw new \Boleto\Exception\InvalidArgumentException($err->_code, $err->_message, $e->getCode());
+                    }
                 }
-                throw new \Boleto\Exception\InvalidArgumentException($error->code, $error->message, $e->getCode());
+                if (isset($error->_message)) {
+                    throw new \Boleto\Exception\InvalidArgumentException($error->_errorCode, $error->_message, $e->getCode());
+                }
             }
             throw new Exception($e->getMessage());
         }
@@ -887,7 +897,8 @@ class SantanderService extends AbstractBank implements InterfaceBank
                 $client = new Client([
                     'base_uri' => $endpoint,
                     'cert' => $this->getCertificado()->getCertificateFilePem(),
-                    'verify' => false
+                    'verify' => false,
+                    'timeout' => 10
                 ]);
 
 
@@ -938,6 +949,19 @@ class SantanderService extends AbstractBank implements InterfaceBank
     {
         // TODO: Implement getCarteira() method.
     }
+
+    public function getTransferTime(): ?float
+    {
+        return $this->transferTime;
+    }
+
+    public function setTransferTime(?float $transferTime): SantanderService
+    {
+        $this->transferTime = $transferTime;
+        return $this;
+    }
+
+
 
     private function tmpfile($name, $content): string
     {
