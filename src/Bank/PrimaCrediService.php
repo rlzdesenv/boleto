@@ -8,6 +8,7 @@ use Boleto\Entity\Juros;
 use Boleto\Entity\Multa;
 use Boleto\Entity\Pagador;
 use Boleto\Exception\InvalidArgumentException;
+use Boleto\Helper\Helper;
 use Cache\Adapter\Apcu\ApcuCachePool;
 use DateTime;
 use Exception;
@@ -471,7 +472,7 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
             $endereco->addChild('numero', $this->pagador->getNumero() ?: 'S/N');
             $endereco->addChild('complemento', $this->pagador->getComplemento() ?: '.');
             $endereco->addChild('bairro', $this->pagador->getBairro() ?: '.');
-            $endereco->addChild('cep', $this->pagador->getCep());
+            $endereco->addChild('cep', Helper::number($this->pagador->getCep()));
             $endereco->addChild('cidade', $this->pagador->getCidade());
             $endereco->addChild('uf', $this->pagador->getUf());
 
@@ -571,6 +572,9 @@ class PrimaCrediService extends AbstractBank implements InterfaceBank
                     throw new \InvalidArgumentException('Código do tipo de juros inválido.');
                 }
             }
+
+            //file_put_contents('C:/home/tmp/primacredi/' . $this->getNossoNumero() . '.xml', $boleto->asXML());
+            //file_put_contents('C:/home/tmp/primacredi/' . $this->getNossoNumero() . '.json', json_encode($boleto));
 
             $boleto = json_decode(json_encode($boleto), true);
             $result = $client->__soapCall("gerarBoletos", ['layout' => 'default', 'boletos' => [$boleto]]);
