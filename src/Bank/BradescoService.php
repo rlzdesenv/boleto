@@ -38,7 +38,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
     private ?string $nossonumero;
     private string $codigobarras;
     private string $linhadigitavel;
-    private string $pixqrcode;
+    private ?string $pixqrcode;
     private int $prazodevolucao = 0;
     private bool $pix = true;
     private ?Pagador $pagador;
@@ -615,7 +615,7 @@ class BradescoService extends AbstractBank implements InterfaceBank
                 $body = json_decode($res->getBody()->getContents());
                 $linhaDigital = $body->linhaDig10;
                 $codigoBarras = $this->convertLinhaDigitalCodigoBarras($linhaDigital);
-                $pix = $body->wqrcdPdraoMercd;
+                $pix = $body->wqrcdPdraoMercd ?? null;
 
                 $this->setCodigobarras($codigoBarras);
                 $this->setLinhadigitavel($linhaDigital);
