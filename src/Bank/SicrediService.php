@@ -342,7 +342,7 @@ class SicrediService implements InterfaceBank
             $arr->cedente = $this->getCedente();
             $arr->tipoPessoa = $this->pagador->getTipoDocumento() === 'CPF' ? '1' : '2';
             $arr->cpfCnpj = Helper::number($this->pagador->getDocumento());
-            $arr->nome = substr(Helper::ascii($this->pagador->getNome()), 0, 40);
+            $arr->nome = Helper::substr(Helper::ascii($this->pagador->getNome()), 0, 40);
             $arr->cep = $this->pagador->getCep();
             $arr->especieDocumento = 'K'; // OUTROS - OS
             $arr->codigoSacadorAvalista = $this->getCodigoSacadorAvalista();
@@ -392,13 +392,13 @@ class SicrediService implements InterfaceBank
 
 
             $arr->descontoAntecipado = 0;
-            $arr->mensagem = substr(Helper::ascii($this->getMensagem()), 0, 300);
+            $arr->mensagem = Helper::substr(Helper::ascii($this->getMensagem()), 0, 300);
             $arr->codigoMensagem = $this->getCodigoMensagem();
-            $arr->endereco = substr(Helper::ascii($this->pagador->getLogradouro()), 0, 40);
-            $arr->cidade = substr(Helper::ascii($this->pagador->getCidade()), 0, 25);
-            $arr->uf = substr(Helper::ascii($this->pagador->getUf()), 0, 2);
+            $arr->endereco = Helper::substr(Helper::ascii($this->pagador->getLogradouro()), 0, 40);
+            $arr->cidade = Helper::substr(Helper::ascii($this->pagador->getCidade()), 0, 25);
+            $arr->uf = Helper::substr(Helper::ascii($this->pagador->getUf()), 0, 2);
             $arr->telefone = $this->pagador->getTelefone();
-            $arr->informativo = substr(Helper::ascii($this->getInformativo()), 0, 80);
+            $arr->informativo = Helper::substr(Helper::ascii($this->getInformativo()), 0, 80);
 
 
             $res = $this->client->request('POST', '/sicredi-cobranca-ws-ecomm-api/ecomm/v1/boleto/emissao', [
@@ -439,3 +439,4 @@ class SicrediService implements InterfaceBank
         return null;
     }
 }
+
