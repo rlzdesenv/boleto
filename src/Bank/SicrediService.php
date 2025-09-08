@@ -62,6 +62,8 @@ class SicrediService implements InterfaceBank
     private $linhadigitavel;
     private $token;
     private $client;
+    private $clientId;
+    private $secretId;
 
     function __construct($agencia = null, $posto = null, $cedente = null, $codigoSacadorAvalista = null, $seuNumero = null,
                          \DateTime $vencimento = null, $valor = null, $juros = null, $descontoAntecipado = null, $mensagem = null,
@@ -439,4 +441,5 @@ class SicrediService implements InterfaceBank
         return null;
     }
 }
+
 
