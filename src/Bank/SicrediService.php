@@ -343,7 +343,7 @@ class SicrediService implements InterfaceBank
             $arr->posto = $this->getPosto();
             $arr->cedente = $this->getCedente();
             $arr->tipoPessoa = $this->pagador->getTipoDocumento() === 'CPF' ? '1' : '2';
-            $arr->cpfCnpj = Helper::number($this->pagador->getDocumento());
+            $arr->cpfCnpj = Helper::document($this->pagador->getDocumento());
             $arr->nome = Helper::substr(Helper::ascii($this->pagador->getNome()), 0, 40);
             $arr->cep = $this->pagador->getCep();
             $arr->especieDocumento = 'K'; // OUTROS - OS
