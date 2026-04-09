@@ -440,7 +440,7 @@ class ShopFacilService implements InterfaceBank
 
             $pagador = new \stdClass();
             $pagador->nome = substr(Helper::ascii($this->pagador->getNome()), 0, 150);
-            $pagador->documento = Helper::number($this->pagador->getDocumento());
+            $pagador->documento = Helper::document($this->pagador->getDocumento());
             $pagador->tipo_documento = $this->pagador->getTipoDocumento() === 'CPF' ? '1' : '2';
             $pagador->endereco = $endereco;
 
