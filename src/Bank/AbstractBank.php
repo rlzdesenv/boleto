@@ -144,19 +144,21 @@ class AbstractBank
         $soma = 0;
         $fator = 2;
 
-        /* Separacao dos numeros */
+        $num = mb_strtoupper($num);
+
+        /* Separação dos números */
         for ($i = strlen($num); $i > 0; $i--) {
             $numeros[$i] = substr($num, $i - 1, 1);
-            $parcial[$i] = $numeros[$i] * $fator;
+            $parcial[$i] = (ord($numeros[$i]) - 48) * $fator;
             $soma += $parcial[$i];
             if ($fator == $base) {
-                // restaura fator de multiplicacao para 2
+                // restaura fator de multiplicação para 2
                 $fator = 1;
             }
             $fator++;
         }
 
-        /* Calculo do modulo 11 */
+        /* Calculo do módulo 11 */
         if ($r == 0) {
             $soma *= 10;
             $digito = $soma % 11;
