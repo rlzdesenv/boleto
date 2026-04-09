@@ -88,7 +88,7 @@ class Pagador
      */
     public function getTipoDocumento()
     {
-        $str = preg_replace("/[^0-9]/", "", $this->documento);
+        $str = preg_replace("/[^A-Z0-9]/", "", $this->documento);
         if (strlen($str) === 11) {
             return 'CPF';
         } // Verifica CNPJ
