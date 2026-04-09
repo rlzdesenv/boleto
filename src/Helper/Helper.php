@@ -22,6 +22,15 @@ class Helper
         return preg_replace("/[^0-9]/", "", $str);
     }
 
+    public static function document($str)
+    {
+        if(empty($str)){
+            return $str;
+        }
+
+        return preg_replace("/[^A-Z0-9]/", "", $str);
+    }
+
     public static function splitPhone($str): ?array
     {
 
