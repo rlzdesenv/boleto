@@ -16,7 +16,7 @@ class Beneficiario extends Pagador
     public function getDocumentoRaiz(): ?string
     {
         if ($this->getTipoDocumento() === 'CNPJ') {
-            $cnpj = Helper::number($this->getDocumento());
+            $cnpj = Helper::document($this->getDocumento());
             return substr($cnpj, 0, 8);
         }
         return null;
@@ -26,7 +26,7 @@ class Beneficiario extends Pagador
     public function getDocumentoFilial(): ?string
     {
         if ($this->getTipoDocumento() === 'CNPJ') {
-            $cnpj = Helper::number($this->getDocumento());
+            $cnpj = Helper::document($this->getDocumento());
             return substr($cnpj, 8, 4);
         }
         return null;
@@ -35,7 +35,7 @@ class Beneficiario extends Pagador
     public function getDocumentoControle(): ?string
     {
         if ($this->getTipoDocumento() === 'CNPJ') {
-            $cnpj = Helper::number($this->getDocumento());
+            $cnpj = Helper::document($this->getDocumento());
             return substr($cnpj, 12, 2);
         }
         return null;
